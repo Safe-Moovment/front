@@ -3,7 +3,7 @@ import { LandingPage } from "./components/views/LandingPage";
 import AppDashboard from "./AppDashboard";
 import Dashboard from "./Dashboard";
 import DashboardLogin from "./DashboardLogin";
-import { isDashboardAuthenticated } from "./auth";
+import { clearDashboardAuthenticated, isBackendReachable, isDashboardAuthenticated } from "./auth";
 
 export const router = createBrowserRouter([
   {
@@ -21,10 +21,17 @@ export const router = createBrowserRouter([
   {
     path: "/dashboard",
     element: <Dashboard />,
-    loader: () => {
+    loader: async () => {
       if (!isDashboardAuthenticated()) {
         throw redirect("/dashboard/login");
       }
+
+      const backendUp = await isBackendReachable();
+      if (!backendUp) {
+        clearDashboardAuthenticated();
+        throw redirect("/dashboard/login");
+      }
+
       return null;
     },
   },

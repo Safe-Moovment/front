@@ -1,24 +1,24 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { Navigate, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { BrandLogo } from "./components/BrandLogo";
 import {
-  dashboardUserExists,
+  completeRegistration,
+  clearDashboardAuthenticated,
+  confirmResetPassword,
+  isBackendReachable,
   isDashboardAuthenticated,
-  registerDashboardUser,
+  loginDashboardUser,
+  requestRegistrationCode,
+  requestResetCode,
   setDashboardAuthenticated,
-  updateDashboardPassword,
-  validateDashboardCredentials,
+  verifyRegistrationCode,
 } from "./auth";
 
 type AuthView = "login" | "register" | "reset";
 type CodeFlowStep = "request" | "verify";
-
-function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
 
 function isValidEmail(email: string): boolean {
   return /\S+@\S+\.\S+/.test(email.trim());
@@ -33,7 +33,6 @@ export default function DashboardLogin() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
-  const [sentCode, setSentCode] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -42,9 +41,32 @@ export default function DashboardLogin() {
   const [authError, setAuthError] = useState("");
   const [authInfo, setAuthInfo] = useState("");
 
-  if (isDashboardAuthenticated()) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  useEffect(() => {
+    let cancelled = false;
+
+    const validateStoredSession = async () => {
+      if (!isDashboardAuthenticated()) {
+        return;
+      }
+
+      const backendUp = await isBackendReachable();
+      if (cancelled) {
+        return;
+      }
+
+      if (backendUp) {
+        navigate("/dashboard", { replace: true });
+      } else {
+        clearDashboardAuthenticated();
+      }
+    };
+
+    validateStoredSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   const resetMessages = () => {
     setAuthError("");
@@ -58,21 +80,11 @@ export default function DashboardLogin() {
     setNewPassword("");
     setConfirmPassword("");
     setVerificationCode("");
-    setSentCode("");
     setPendingEmail("");
     setShowPassword(false);
     setShowNewPassword(false);
     setShowConfirmPassword(false);
     resetMessages();
-  };
-
-  const sendVerificationCode = async (targetEmail: string) => {
-    const code = generateVerificationCode();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setSentCode(code);
-    setPendingEmail(targetEmail.trim().toLowerCase());
-    setStep("verify");
-    setAuthInfo(`Codigo enviado al correo. Demo actual: ${code}`);
   };
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
@@ -88,18 +100,13 @@ export default function DashboardLogin() {
     setIsSubmitting(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      if (!validateDashboardCredentials(trimmedEmail, password)) {
-        setAuthError("Correo o contrasena incorrectos.");
-        return;
-      }
+      await loginDashboardUser(trimmedEmail, password);
 
       setDashboardAuthenticated();
       setPassword("");
       navigate("/dashboard", { replace: true });
-    } catch {
-      setAuthError("No se pudo iniciar sesion. Intenta de nuevo.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No se pudo iniciar sesion. Intenta de nuevo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -115,16 +122,14 @@ export default function DashboardLogin() {
       return;
     }
 
-    if (dashboardUserExists(trimmedEmail)) {
-      setAuthError("Ese correo ya esta registrado. Inicia sesion o restablece contrasena.");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await sendVerificationCode(trimmedEmail);
-    } catch {
-      setAuthError("No se pudo enviar el codigo. Intenta de nuevo.");
+      const message = await requestRegistrationCode(trimmedEmail);
+      setPendingEmail(trimmedEmail);
+      setStep("verify");
+      setAuthInfo(message);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No se pudo enviar el codigo. Intenta de nuevo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -134,7 +139,12 @@ export default function DashboardLogin() {
     event.preventDefault();
     resetMessages();
 
-    if (!verificationCode || verificationCode !== sentCode) {
+    if (!pendingEmail) {
+      setAuthError("Primero solicita el codigo de verificacion.");
+      return;
+    }
+
+    if (!verificationCode) {
       setAuthError("El codigo de verificacion no coincide.");
       return;
     }
@@ -151,25 +161,20 @@ export default function DashboardLogin() {
 
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const wasRegistered = registerDashboardUser(pendingEmail, newPassword);
-      if (!wasRegistered) {
-        setAuthError("Ese correo ya fue registrado. Intenta iniciar sesion.");
-        return;
-      }
+      await verifyRegistrationCode(pendingEmail, verificationCode);
+      await completeRegistration(pendingEmail, newPassword);
 
       setEmail(pendingEmail);
       setPassword("");
       setAuthInfo("Registro completado. Ahora inicia sesion.");
       setStep("request");
       setVerificationCode("");
-      setSentCode("");
       setNewPassword("");
       setConfirmPassword("");
       setPendingEmail("");
       setView("login");
-    } catch {
-      setAuthError("No se pudo completar el registro.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No se pudo completar el registro.");
     } finally {
       setIsSubmitting(false);
     }
@@ -185,16 +190,14 @@ export default function DashboardLogin() {
       return;
     }
 
-    if (!dashboardUserExists(trimmedEmail)) {
-      setAuthError("No existe una cuenta con ese correo.");
-      return;
-    }
-
     setIsSubmitting(true);
     try {
-      await sendVerificationCode(trimmedEmail);
-    } catch {
-      setAuthError("No se pudo enviar el codigo. Intenta de nuevo.");
+      const message = await requestResetCode(trimmedEmail);
+      setPendingEmail(trimmedEmail);
+      setStep("verify");
+      setAuthInfo(message);
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No se pudo enviar el codigo. Intenta de nuevo.");
     } finally {
       setIsSubmitting(false);
     }
@@ -204,7 +207,12 @@ export default function DashboardLogin() {
     event.preventDefault();
     resetMessages();
 
-    if (!verificationCode || verificationCode !== sentCode) {
+    if (!pendingEmail) {
+      setAuthError("Primero solicita el codigo de recuperacion.");
+      return;
+    }
+
+    if (!verificationCode) {
       setAuthError("El codigo de verificacion no coincide.");
       return;
     }
@@ -221,25 +229,19 @@ export default function DashboardLogin() {
 
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      const wasUpdated = updateDashboardPassword(pendingEmail, newPassword);
-      if (!wasUpdated) {
-        setAuthError("No se encontro la cuenta para actualizar.");
-        return;
-      }
+      await confirmResetPassword(pendingEmail, verificationCode, newPassword);
 
       setEmail(pendingEmail);
       setPassword("");
       setAuthInfo("Contrasena actualizada. Ahora inicia sesion.");
       setStep("request");
       setVerificationCode("");
-      setSentCode("");
       setNewPassword("");
       setConfirmPassword("");
       setPendingEmail("");
       setView("login");
-    } catch {
-      setAuthError("No se pudo restablecer la contrasena.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "No se pudo restablecer la contrasena.");
     } finally {
       setIsSubmitting(false);
     }
@@ -256,7 +258,7 @@ export default function DashboardLogin() {
           {view === "login"
             ? "Ingresa con tu cuenta para entrar al dashboard productivo."
             : view === "register"
-              ? "Registra tu correo, valida el codigo y crea tu contrasena."
+              ? "Registra tu correo, valida el codigo y crea tu contraseña."
               : "Te enviaremos un codigo de verificacion para crear una nueva contrasena."}
         </p>
 
