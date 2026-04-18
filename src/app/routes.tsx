@@ -4,6 +4,7 @@ import AppDashboard from "./AppDashboard";
 import Dashboard from "./Dashboard";
 import DashboardLogin from "./DashboardLogin";
 import { clearDashboardAuthenticated, isBackendReachable, isDashboardAuthenticated } from "./auth";
+import { DashboardProvider } from "./context/DashboardContext";
 
 export const router = createBrowserRouter([
   {
@@ -12,7 +13,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/demo",
-    element: <AppDashboard />,
+    element: (
+      <DashboardProvider mode="demo">
+        <AppDashboard />
+      </DashboardProvider>
+    ),
   },
   {
     path: "/dashboard/login",
@@ -20,7 +25,11 @@ export const router = createBrowserRouter([
   },
   {
     path: "/dashboard",
-    element: <Dashboard />,
+    element: (
+      <DashboardProvider mode="live">
+        <Dashboard />
+      </DashboardProvider>
+    ),
     loader: async () => {
       if (!isDashboardAuthenticated()) {
         throw redirect("/dashboard/login");
@@ -37,6 +46,10 @@ export const router = createBrowserRouter([
   },
   {
     path: "/app",
-    element: <AppDashboard />,
+    element: (
+      <DashboardProvider mode="demo">
+        <AppDashboard />
+      </DashboardProvider>
+    ),
   },
 ]);

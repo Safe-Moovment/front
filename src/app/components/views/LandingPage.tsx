@@ -61,7 +61,15 @@ export function LandingPage() {
                 onClick={handleDemoCTA}
                 className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
               >
-                Demo
+                Ver Demo Interactiva
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+              <Button
+                onClick={handleCTA}
+                variant="outline"
+                className="border-white/70 text-white bg-white/10 hover:bg-white hover:text-[#2C2C2C] px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+              >
+                Probar Plataforma (Beta)
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </div>
@@ -572,7 +580,15 @@ export function LandingPage() {
               onClick={handleDemoCTA}
               className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
             >
-              Demo
+              Ver Demo Interactiva
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              onClick={handleCTA}
+              variant="outline"
+              className="border-white/70 text-white bg-white/10 hover:bg-white hover:text-[#2C2C2C] px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+            >
+              Probar Plataforma (Beta)
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </div>

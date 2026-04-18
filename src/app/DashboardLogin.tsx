@@ -250,7 +250,10 @@ export default function DashboardLogin() {
   return (
     <div className="min-h-screen bg-[#F0F0ED] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-[#E5E5E5] p-8">
-        <BrandLogo className="mb-6" tone="dark" imageClassName="h-12 w-12" />
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <BrandLogo tone="dark" imageClassName="h-12 w-12" />
+          <Button type="button" variant="outline" size="sm" onClick={() => navigate("/")}>Volver a Landing</Button>
+        </div>
         <h1 className="text-2xl font-bold text-[#2C2C2C]">
           {view === "login" ? "Acceso al sistema" : view === "register" ? "Crear cuenta" : "Restablecer contrasena"}
         </h1>

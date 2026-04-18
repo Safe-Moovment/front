@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Menu } from "lucide-react";
+import { useNavigate } from "react-router";
 import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/badge";
 import { Sidebar } from "./components/Sidebar";
 import { MapView } from "./components/MapView";
 import { HealthStatus } from "./components/HealthStatus";
@@ -16,6 +18,7 @@ import { ElevationMapView } from "./components/views/ElevationMapView";
 import { BrandLogo } from "./components/BrandLogo";
 
 export default function AppDashboard() {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -68,8 +71,19 @@ export default function AppDashboard() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-                  <BrandLogo tone="dark" imageClassName="h-8 w-8" />
-          <div className="w-10" /> {/* Espaciador */}
+          <div className="flex items-center gap-2">
+            <BrandLogo tone="dark" imageClassName="h-8 w-8" />
+            <Badge className="bg-[#5C7A5B] text-white">Modo Demo</Badge>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>Inicio</Button>
+        </div>
+
+        <div className="hidden lg:flex justify-end p-3 bg-white border-b border-[#E5E5E5]">
+          <div className="mr-auto">
+            <BrandLogo tone="dark" imageClassName="h-8 w-8" />
+          </div>
+          <Badge className="mr-3 self-center bg-[#5C7A5B] text-white">Modo Demo</Badge>
+          <Button variant="outline" size="sm" onClick={() => navigate("/")}>Volver a Landing</Button>
         </div>
 
         <div className="flex-1 overflow-auto">
