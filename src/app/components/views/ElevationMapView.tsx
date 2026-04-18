@@ -21,7 +21,7 @@ import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { useElevation, type ElevationPoint } from "../../hooks/useElevation";
 
-import { useDashboard } from "../../context/DashboardContext";
+import { useDashboard, Fence } from "../../context/DashboardContext";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 
@@ -307,6 +307,42 @@ function isPointInsidePolygon(
   return inside;
 }
 
+function PanController({ target }: { target: { lat: number; lng: number } | null }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || !target) return;
+    map.panTo(target);
+    map.setZoom(16);
+  }, [map, target]);
+
+  return null;
+}
+
+function FenceBoundsController({ fences, disabled }: { fences: Fence[]; disabled?: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || disabled || fences.length === 0) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    let hasPoints = false;
+
+    fences.forEach((fence) => {
+      fence.coordinates.forEach(([lat, lng]) => {
+        bounds.extend({ lat, lng });
+        hasPoints = true;
+      });
+    });
+
+    if (!hasPoints) return;
+
+    map.fitBounds(bounds, 64);
+  }, [map, fences, disabled]);
+
+  return null;
+}
+
 export function ElevationMapView() {
   const { animals, fences, fencesLoading, fencesError, ranchContext } = useDashboard();
   const RANCH_CENTER = { lat: ranchContext.lat, lng: ranchContext.lng };
@@ -327,6 +363,34 @@ export function ElevationMapView() {
   const [showOverlay, setShowOverlay] = useState(true);
   const [showRiskZones, setShowRiskZones] = useState(true);
   const [mapTypeId, setMapTypeId] = useState<string>("terrain");
+  const [panTarget, setPanTarget] = useState<{ lat: number; lng: number } | null>(null);
+  const [isLocatingUser, setIsLocatingUser] = useState(true);
+
+  useEffect(() => {
+    if (!("geolocation" in navigator)) {
+      setIsLocatingUser(false);
+      return;
+    }
+
+    const watcherId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setPanTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setIsLocatingUser(false);
+      },
+      () => {
+        setIsLocatingUser(false);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 15000,
+      },
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watcherId);
+    };
+  }, []);
 
   // Generate grid points once
   const gridPoints = useMemo(
@@ -542,6 +606,9 @@ export function ElevationMapView() {
                       gridCols={GRID_COLS}
                     />
                   )}
+
+                  <FenceBoundsController fences={fences} disabled={isLocatingUser || panTarget !== null} />
+                  <PanController target={panTarget} />
 
                   {/* Animal markers */}
                   {animals.map((animal) => (

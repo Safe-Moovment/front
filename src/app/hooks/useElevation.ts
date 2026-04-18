@@ -15,7 +15,7 @@ interface UseElevationReturn {
   fetchHeadlessBatch: (locations: { lat: number; lng: number }[]) => Promise<ElevationPoint[]>;
 }
 
-const OPEN_TOPO_DATA_URL = "https://api.opentopodata.org/v1/srtm30m";
+const DEFAULT_API_BASE_URL = "http://localhost:3000";
 const MAX_LOCATIONS_PER_REQUEST = 100;
 
 // Simple in-memory cache keyed by "lat,lng" rounded to 4 decimals
@@ -25,28 +25,34 @@ function cacheKey(lat: number, lng: number): string {
   return `${lat.toFixed(4)},${lng.toFixed(4)}`;
 }
 
-// Global Execution Queue to completely shield against "429 Too Many Requests"
+function getApiBaseUrl(): string {
+  return (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || DEFAULT_API_BASE_URL;
+}
+
+// Global Execution Queue to completely shield against rate spikes.
 let queueChain: Promise<any> = Promise.resolve();
 
-async function queuedFetch(url: string): Promise<any> {
+async function queuedFetch(locations: { lat: number; lng: number }[]): Promise<any> {
   const result = new Promise<any>((resolve, reject) => {
     queueChain = queueChain.then(async () => {
       try {
-        const res = await fetch(url);
+        const res = await fetch(`${getApiBaseUrl()}/elevation/batch`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ locations }),
+        });
         if (!res.ok) {
-          throw new Error(`OpenTopoData API error: ${res.status} ${res.statusText}`);
+          throw new Error(`Elevation API error: ${res.status} ${res.statusText}`);
         }
         const json = await res.json();
-        if (json.status !== "OK") {
-          throw new Error(`OpenTopoData returned status: ${json.status}`);
-        }
         resolve(json);
       } catch (e) {
         reject(e);
       }
       
-      // Enforce absolute rate limit (1 req/sec max) for OpenTopoData
-      await new Promise(r => setTimeout(r, 1200)); 
+      await new Promise(r => setTimeout(r, 50)); 
     });
   });
   return result;
@@ -78,12 +84,9 @@ async function fetchBatch(
   }
 
   for (const batch of batches) {
-    const locString = batch.map((l) => `${l.lat},${l.lng}`).join("|");
-    const url = `${OPEN_TOPO_DATA_URL}?locations=${locString}&interpolation=bilinear`;
+    const json = await queuedFetch(batch.map((l) => ({ lat: l.lat, lng: l.lng })));
 
-    const json = await queuedFetch(url);
-
-    json.results.forEach((result: { elevation: number | null; location: { lat: number; lng: number } }, i: number) => {
+    json.forEach((result: { elevation: number | null }, i: number) => {
       const originalIndex = batch[i].index;
       const elev = result.elevation;
       results[originalIndex].elevation = elev;
