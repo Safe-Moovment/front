@@ -267,6 +267,94 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Valor Social y Compromiso Etico */}
+      <section className="py-16 md:py-24 bg-white">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8">
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#2C2C2C] mb-4">
+              Valor Social y Compromiso Etico
+            </h2>
+            <p className="text-lg md:text-xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
+              "Mas que tecnologia, es un compromiso con la vida." En Safe Movement creemos que la
+              rentabilidad debe ir de la mano con la etica para impulsar una ganaderia mas humana,
+              sostenible y transparente.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
+            <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl">
+              <CardContent className="p-6 md:p-8">
+                <div className="bg-[#5C7A5B]/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
+                  <Heart className="h-7 w-7 text-[#5C7A5B]" />
+                </div>
+                <h3 className="text-2xl font-semibold text-[#2C2C2C] mb-4">Bienestar Animal sin Estres</h3>
+                <div className="space-y-4 text-gray-600 leading-relaxed">
+                  <p>
+                    <strong className="text-[#2C2C2C]">Monitoreo No Invasivo:</strong> Supervisamos
+                    24/7 sin manipulacion fisica frecuente, reduciendo el estres del ganado y evitando
+                    alteraciones en su comportamiento natural.
+                  </p>
+                  <p>
+                    <strong className="text-[#2C2C2C]">Atencion Temprana y Humanitaria:</strong> Al
+                    detectar cambios fisiologicos antes de sintomas clinicos visibles, facilitamos
+                    intervenciones veterinarias oportunas y reducimos sufrimiento innecesario.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl">
+              <CardContent className="p-6 md:p-8">
+                <div className="bg-[#5C7A5B]/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
+                  <Shield className="h-7 w-7 text-[#5C7A5B]" />
+                </div>
+                <h3 className="text-2xl font-semibold text-[#2C2C2C] mb-4">Seguridad Alimentaria y Confianza</h3>
+                <div className="space-y-4 text-gray-600 leading-relaxed">
+                  <p>
+                    <strong className="text-[#2C2C2C]">Estandares de Salud Superiores:</strong>
+                    Fortalecemos controles sanitarios para ofrecer alimentos de origen animal con mayor
+                    calidad y trazabilidad para el consumidor final.
+                  </p>
+                  <p>
+                    <strong className="text-[#2C2C2C]">Prevencion de Brotes:</strong> La deteccion
+                    temprana ayuda a contener enfermedades dentro del hato y protege la integridad de
+                    la produccion regional.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl">
+              <CardContent className="p-6 md:p-8">
+                <div className="bg-[#5C7A5B]/10 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
+                  <Leaf className="h-7 w-7 text-[#5C7A5B]" />
+                </div>
+                <h3 className="text-2xl font-semibold text-[#2C2C2C] mb-4">Sostenibilidad y Futuro</h3>
+                <div className="space-y-4 text-gray-600 leading-relaxed">
+                  <p>
+                    <strong className="text-[#2C2C2C]">Ganaderia Etica:</strong> Impulsamos manejo
+                    responsable alineado con una sociedad que valora el respeto por la vida animal y la
+                    produccion consciente.
+                  </p>
+                  <p>
+                    <strong className="text-[#2C2C2C]">Impacto Social Positivo:</strong> Safe
+                    Movement beneficia al productor y fortalece una industria agropecuaria mas eficiente,
+                    sostenible y orientada al cuidado integral.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-10 md:mt-12 rounded-2xl bg-[#F0F0ED] border border-[#E5E5E5] p-6 md:p-8 text-center">
+            <p className="text-xl md:text-2xl font-semibold text-[#2C2C2C] leading-relaxed">
+              La rentabilidad y el bienestar animal no compiten: se potencian cuando la tecnologia se
+              diseña con etica, evidencia y compromiso social.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Trazabilidad y Sostenibilidad */}
       <section className="py-16 md:py-24 bg-white">
         <div className="container mx-auto px-4 md:px-6 lg:px-8">
