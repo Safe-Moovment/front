@@ -1,0 +1,65 @@
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Beef, Battery, MapPin } from "lucide-react";
+import { Badge } from "./ui/badge";
+
+import { useDashboard } from "../context/DashboardContext";
+
+export function CattleQuickView() {
+  const { animals } = useDashboard();
+  // Mostrar solo los primeros 5 para la vista rápida
+  const cattleData = animals.slice(0, 5);
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm md:text-base flex items-center gap-2">
+          <Beef className="h-4 w-4 text-[#5C7A5B]" />
+          Resumen de Ganado
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Ubicación</TableHead>
+              <TableHead>Salud</TableHead>
+              <TableHead className="text-right">Batería</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {cattleData.map((cattle) => (
+              <TableRow key={cattle.id}>
+                <TableCell className="font-medium">#{cattle.id}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-sm">{cattle.locationText}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={cattle.health === "Excelente" ? "default" : cattle.health === "Buena" ? "secondary" : "destructive"}
+                    className={cattle.health === "Excelente" ? "bg-[#5C7A5B]" : ""}
+                  >
+                    {cattle.health}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <Battery
+                      className={`h-4 w-4 ${
+                        cattle.battery > 80 ? "text-[#5C7A5B]" : "text-muted-foreground"
+                      }`}
+                    />
+                    <span className="text-sm">{cattle.battery}%</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}

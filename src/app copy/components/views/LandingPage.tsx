@@ -26,10 +26,6 @@ export function LandingPage() {
     navigate("/app");
   };
 
-  const handleDemoCTA = () => {
-    navigate("/demo");
-  };
-
   return (
     <div className="min-h-screen bg-[#FAFAF8]">
       {/* Hero Section */}
@@ -53,10 +49,10 @@ export function LandingPage() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
               <Button 
-                onClick={handleDemoCTA}
+                onClick={handleCTA}
                 className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
               >
-                Demo
+                Solicitar Demo
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
               <Button 
