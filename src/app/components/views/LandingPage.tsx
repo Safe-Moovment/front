@@ -424,11 +424,11 @@ export function LandingPage() {
         <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative order-2 lg:order-1">
-              <div className="relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
+              <div className="relative h-[280px] sm:h-[340px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-[#F0F0ED]">
                 <ImageWithFallback
-                  src="https://images.unsplash.com/photo-1758411898158-213a318e2442?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbW9uaXRvcmluZyUyMGRhc2hib2FyZHxlbnwxfHx8fDE3NzY0ODE5NDd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                  src="/collar.png"
                   alt="Dashboard de monitoreo"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain lg:object-cover p-4 lg:p-0"
                 />
               </div>
             </div>
