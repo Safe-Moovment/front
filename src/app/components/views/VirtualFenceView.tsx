@@ -143,11 +143,11 @@ function PanController({ target }: { target: { lat: number, lng: number } | null
   return null;
 }
 
-function FenceBoundsController({ fences, disabled }: { fences: Fence[]; disabled?: boolean }) {
+function FenceBoundsController({ fences }: { fences: Fence[] }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map || disabled || fences.length === 0) return;
+    if (!map || fences.length === 0) return;
 
     const bounds = new google.maps.LatLngBounds();
     let hasPoints = false;
@@ -162,7 +162,7 @@ function FenceBoundsController({ fences, disabled }: { fences: Fence[]; disabled
     if (!hasPoints) return;
 
     map.fitBounds(bounds, 64);
-  }, [map, fences, disabled]);
+  }, [map, fences]);
 
   return null;
 }
@@ -193,33 +193,6 @@ export function VirtualFenceView() {
 
   const defaultRanchCenter = { lat: ranchContext.lat, lng: ranchContext.lng };
   const [panTarget, setPanTarget] = useState<{ lat: number, lng: number } | null>(null);
-  const [isLocatingUser, setIsLocatingUser] = useState(true);
-
-  useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setIsLocatingUser(false);
-      return;
-    }
-
-    const watcherId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setPanTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setIsLocatingUser(false);
-      },
-      () => {
-        setIsLocatingUser(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 15000,
-      },
-    );
-
-    return () => {
-      navigator.geolocation.clearWatch(watcherId);
-    };
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -341,7 +314,7 @@ export function VirtualFenceView() {
                     </AdvancedMarker>
                   ))}
 
-                  <FenceBoundsController fences={fences} disabled={isLocatingUser || panTarget !== null} />
+                  <FenceBoundsController fences={fences} />
                   <PanController target={panTarget} />
                 </Map>
               </APIProvider>

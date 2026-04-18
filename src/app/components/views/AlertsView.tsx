@@ -6,17 +6,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
 import { Switch } from "../ui/switch";
-import { useDashboard } from "../../context/DashboardContext";
+import { useDashboard, type Alert, type Animal } from "../../context/DashboardContext";
+
+function normalizeText(value: string): string {
+  return value.toLowerCase().trim();
+}
+
+function findAnimalForAlert(alert: Alert, animals: Animal[]): Animal | null {
+  if (animals.length === 0) return null;
+
+  const alertAnimalText = normalizeText(alert.animal);
+
+  const directMatch = animals.find((animal) => {
+    const id = normalizeText(animal.id);
+    const name = normalizeText(animal.name);
+    return (
+      alertAnimalText.includes(id) ||
+      alertAnimalText.includes(name) ||
+      id.includes(alertAnimalText) ||
+      name.includes(alertAnimalText)
+    );
+  });
+
+  if (directMatch) return directMatch;
+
+  const numberToken = alert.animal.match(/\d+/)?.[0];
+  if (!numberToken) return null;
+
+  const numberMatch = animals.find((animal) => {
+    const id = normalizeText(animal.id);
+    const name = normalizeText(animal.name);
+    return id.includes(numberToken) || name.includes(numberToken);
+  });
+
+  return numberMatch ?? null;
+}
+
+function AlertsEmptyState({ message, onNavigate }: { message: string; onNavigate?: (path: string) => void }) {
+  return (
+    <Card>
+      <CardContent className="py-8 text-center space-y-3">
+        <p className="text-sm text-muted-foreground">{message}</p>
+        {onNavigate && (
+          <Button size="sm" variant="outline" onClick={() => onNavigate("home")}>
+            Ir al inicio
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function AlertsView({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const { alerts: allAlerts, animals, resolveAlert } = useDashboard();
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [selectedMapAnimal, setSelectedMapAnimal] = useState<any>(null);
+  const [selectedMapAnimal, setSelectedMapAnimal] = useState<Animal | null>(null);
+  const [locationLookupMessage, setLocationLookupMessage] = useState<string | null>(null);
   const highAlerts = allAlerts.filter(a => a.severity === "high");
   const mediumAlerts = allAlerts.filter(a => a.severity === "medium");
   const lowAlerts = allAlerts.filter(a => a.severity === "low");
 
-  const renderAlert = (alert: any) => (
+  const renderAlert = (alert: Alert) => (
     <Card key={alert.id} className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
@@ -54,10 +104,26 @@ export function AlertsView({ onNavigate }: { onNavigate?: (path: string) => void
             </div>
 
             <div className="flex gap-2 mt-3">
-              <Button size="sm" className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90" onClick={() => {
-                const animal = animals.find(a => alert.animal.includes(a.id));
-                if (animal) setSelectedMapAnimal(animal);
-              }}>
+              <Button
+                size="sm"
+                className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90"
+                onClick={() => {
+                  const matchedAnimal = findAnimalForAlert(alert, animals);
+                  if (matchedAnimal) {
+                    setSelectedMapAnimal(matchedAnimal);
+                    setLocationLookupMessage(null);
+                    return;
+                  }
+
+                  if (animals.length > 0) {
+                    setSelectedMapAnimal(animals[0]);
+                    setLocationLookupMessage("No se encontro coincidencia exacta, mostrando el primer animal disponible.");
+                    return;
+                  }
+
+                  setLocationLookupMessage("No hay animales cargados para ubicar esta alerta.");
+                }}
+              >
                 Ver Ubicación
               </Button>
               <Button size="sm" variant="outline" onClick={() => resolveAlert(alert.id)}>
@@ -129,18 +195,32 @@ export function AlertsView({ onNavigate }: { onNavigate?: (path: string) => void
         </TabsList>
 
         <TabsContent value="all" className="space-y-4 mt-4">
-          {allAlerts.map(renderAlert)}
+          {allAlerts.length > 0 ? allAlerts.map(renderAlert) : (
+            <AlertsEmptyState message="No hay alertas activas en este momento." onNavigate={onNavigate} />
+          )}
         </TabsContent>
         <TabsContent value="high" className="space-y-4 mt-4">
-          {highAlerts.map(renderAlert)}
+          {highAlerts.length > 0 ? highAlerts.map(renderAlert) : (
+            <AlertsEmptyState message="No hay alertas criticas." onNavigate={onNavigate} />
+          )}
         </TabsContent>
         <TabsContent value="medium" className="space-y-4 mt-4">
-          {mediumAlerts.map(renderAlert)}
+          {mediumAlerts.length > 0 ? mediumAlerts.map(renderAlert) : (
+            <AlertsEmptyState message="No hay alertas medias." onNavigate={onNavigate} />
+          )}
         </TabsContent>
         <TabsContent value="low" className="space-y-4 mt-4">
-          {lowAlerts.map(renderAlert)}
+          {lowAlerts.length > 0 ? lowAlerts.map(renderAlert) : (
+            <AlertsEmptyState message="No hay alertas bajas." onNavigate={onNavigate} />
+          )}
         </TabsContent>
       </Tabs>
+
+      {locationLookupMessage && (
+        <Card>
+          <CardContent className="py-3 text-xs text-[#6B6B6B]">{locationLookupMessage}</CardContent>
+        </Card>
+      )}
 
       <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
         <DialogContent className="sm:max-w-[425px]">
@@ -210,9 +290,21 @@ export function AlertsView({ onNavigate }: { onNavigate?: (path: string) => void
                 loading="lazy"
                 allowFullScreen
                 referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=${selectedMapAnimal.lat},${selectedMapAnimal.lng}&zoom=17&maptype=satellite`}
+                src={`https://www.google.com/maps?q=${selectedMapAnimal.lat},${selectedMapAnimal.lng}&z=17&output=embed`}
               />
             )}
+          </div>
+          <div className="p-3 border-t bg-white flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (!selectedMapAnimal) return;
+                window.open(`https://www.google.com/maps?q=${selectedMapAnimal.lat},${selectedMapAnimal.lng}`, "_blank", "noopener,noreferrer");
+              }}
+            >
+              Abrir en Google Maps
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

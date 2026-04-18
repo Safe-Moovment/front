@@ -17,11 +17,11 @@ function PanController({ target }: { target: { lat: number; lng: number } | null
   return null;
 }
 
-function FenceBoundsController({ fences, disabled }: { fences: Fence[]; disabled?: boolean }) {
+function FenceBoundsController({ fences }: { fences: Fence[] }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!map || disabled || fences.length === 0) return;
+    if (!map || fences.length === 0) return;
 
     const bounds = new google.maps.LatLngBounds();
     let hasPoints = false;
@@ -38,7 +38,7 @@ function FenceBoundsController({ fences, disabled }: { fences: Fence[]; disabled
     if (!hasPoints) return;
 
     map.fitBounds(bounds, 64);
-  }, [map, fences, disabled]);
+  }, [map, fences]);
 
   return null;
 }
@@ -85,7 +85,6 @@ export function MapView() {
   const [hoveredAnimal, setHoveredAnimal] = useState<string | null>(null);
   const [mapTypeId, setMapTypeId] = useState<string>("terrain");
   const [panTarget, setPanTarget] = useState<{ lat: number; lng: number } | null>(null);
-  const [isLocatingUser, setIsLocatingUser] = useState(true);
   const [mapApiError, setMapApiError] = useState<string | null>(
     GOOGLE_MAPS_API_KEY ? null : "No se encontro la clave de Google Maps.",
   );
@@ -93,46 +92,15 @@ export function MapView() {
 
   const center = { lat: ranchContext.lat, lng: ranchContext.lng };
 
-  useEffect(() => {
-    if (!("geolocation" in navigator)) {
-      setIsLocatingUser(false);
-      return;
-    }
-
-    const watcherId = navigator.geolocation.watchPosition(
-      (pos) => {
-        setPanTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setUserAccuracy(pos.coords.accuracy ?? null);
-        setIsLocatingUser(false);
-      },
-      () => {
-        setIsLocatingUser(false);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0,
-        timeout: 15000,
-      },
-    );
-
-    return () => {
-      navigator.geolocation.clearWatch(watcherId);
-    };
-  }, []);
-
   const requestPreciseLocation = () => {
     if (!("geolocation" in navigator)) return;
 
-    setIsLocatingUser(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setPanTarget({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         setUserAccuracy(pos.coords.accuracy ?? null);
-        setIsLocatingUser(false);
       },
-      () => {
-        setIsLocatingUser(false);
-      },
+      () => undefined,
       {
         enableHighAccuracy: true,
         maximumAge: 0,
@@ -194,7 +162,7 @@ export function MapView() {
         >
           {/* Natively map polygons directly to topography */}
           <HomeFencesOverlay fences={fences} />
-          <FenceBoundsController fences={fences} disabled={isLocatingUser || panTarget !== null} />
+          <FenceBoundsController fences={fences} />
           <PanController target={panTarget} />
 
           {/* Place animals natively via AdvancedMarkers */}

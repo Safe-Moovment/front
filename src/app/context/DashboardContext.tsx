@@ -91,6 +91,23 @@ const initialAlerts: Alert[] = [
 
 const DashboardContext = createContext<DashboardContextType | undefined>(undefined);
 
+function normalizeFenceCoordinates(coordinates: [number, number][]): [number, number][] {
+  return coordinates.map(([a, b]) => {
+    // Fix records accidentally stored as [lng, lat].
+    if (Math.abs(a) > 90 && Math.abs(b) <= 90) {
+      return [b, a];
+    }
+    return [a, b];
+  });
+}
+
+function normalizeFence(fence: Fence): Fence {
+  return {
+    ...fence,
+    coordinates: normalizeFenceCoordinates(fence.coordinates),
+  };
+}
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [animalsLoading, setAnimalsLoading] = useState<boolean>(false);
@@ -146,7 +163,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     setFencesError(null);
     try {
       const data = await fetchFencesApi();
-      setFences(data);
+      setFences(data.map(normalizeFence));
     } catch (error) {
       const message = error instanceof Error ? error.message : "No se pudieron cargar vallas.";
       setFencesError(message);
@@ -182,13 +199,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const addFence = async (fence: Fence) => {
     setFencesError(null);
     const created = await createFenceApi(fence);
-    setFences(prev => [...prev, created]);
+    setFences(prev => [...prev, normalizeFence(created)]);
   };
 
   const updateFence = async (id: string, newData: Partial<Fence>) => {
     setFencesError(null);
     const updated = await updateFenceApi(id, newData);
-    setFences(prev => prev.map(f => f.id === id ? updated : f));
+    setFences(prev => prev.map(f => f.id === id ? normalizeFence(updated) : f));
   };
 
   const deleteFence = async (id: string) => {
