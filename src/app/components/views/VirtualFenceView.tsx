@@ -254,7 +254,7 @@ export function VirtualFenceView() {
                   defaultZoom={15}
                   mapId="virtual-fence-map"
                   mapTypeId={mapTypeId}
-                  gestureHandling="greedy"
+                  gestureHandling="cooperative"
                   disableDefaultUI={false}
                   zoomControl={true}
                   mapTypeControl={false}

@@ -550,7 +550,7 @@ export function ElevationMapView() {
                   defaultZoom={15}
                   mapId="elevation-map"
                   mapTypeId={mapTypeId}
-                  gestureHandling="greedy"
+                  gestureHandling="cooperative"
                   disableDefaultUI={false}
                   zoomControl={true}
                   mapTypeControl={false}

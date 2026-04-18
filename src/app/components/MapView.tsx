@@ -152,7 +152,7 @@ export function MapView() {
           defaultZoom={15}
           mapId="dashboard-home-map"
           mapTypeId={mapTypeId}
-          gestureHandling="greedy"
+          gestureHandling="cooperative"
           disableDefaultUI={false}
           zoomControl={true}
           mapTypeControl={false}
