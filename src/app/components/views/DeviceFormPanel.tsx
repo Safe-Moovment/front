@@ -12,7 +12,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   device: Device | null;
-  onSave: (data: Partial<Device>) => void;
+  onSave: (data: Partial<Device>) => Promise<void> | void;
 }
 
 export function DeviceFormPanel({ open, onOpenChange, device, onSave }: Props) {
@@ -27,10 +27,16 @@ export function DeviceFormPanel({ open, onOpenChange, device, onSave }: Props) {
       setFormData({
         id: "",
         animalId: "No asignado",
-        battery: 100,
-        signal: 100,
+        battery: 0,
+        signal: 0,
         status: "active",
-        lastPing: "Recién conectado"
+        lastPing: new Date().toISOString(),
+        hardwareVersion: "",
+        solarCharging: false,
+        protocol: "LoRaWAN",
+        lastSyncMode: "Store & Forward",
+        gatewayId: "",
+        alertsCount: 0,
       });
     }
   }, [device, open]);
@@ -39,8 +45,8 @@ export function DeviceFormPanel({ open, onOpenChange, device, onSave }: Props) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
+  const handleSave = async () => {
+    await onSave(formData);
     onOpenChange(false);
   };
 
@@ -82,6 +88,102 @@ export function DeviceFormPanel({ open, onOpenChange, device, onSave }: Props) {
             <SelectItem value="active">Activo</SelectItem>
             <SelectItem value="warning">Advertencia</SelectItem>
             <SelectItem value="critical">Crítico</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="battery">Batería (%)</Label>
+          <Input
+            id="battery"
+            type="number"
+            min={0}
+            max={100}
+            value={formData.battery}
+            onChange={e => handleChange("battery", Number(e.target.value))}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="signal">Señal (%)</Label>
+          <Input
+            id="signal"
+            type="number"
+            min={0}
+            max={100}
+            value={formData.signal}
+            onChange={e => handleChange("signal", Number(e.target.value))}
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="hardwareVersion">Versión de Hardware</Label>
+        <Input
+          id="hardwareVersion"
+          value={formData.hardwareVersion}
+          onChange={e => handleChange("hardwareVersion", e.target.value)}
+          placeholder="Ej. V3-Solar"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>Protocolo</Label>
+          <Select value={formData.protocol} onValueChange={(val) => handleChange("protocol", val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LoRaWAN">LoRaWAN</SelectItem>
+              <SelectItem value="LTE">LTE</SelectItem>
+              <SelectItem value="NB-IoT">NB-IoT</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Modo de Sincronización</Label>
+          <Select value={formData.lastSyncMode} onValueChange={(val) => handleChange("lastSyncMode", val)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Store & Forward">Store & Forward</SelectItem>
+              <SelectItem value="Real-time">Real-time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="gatewayId">Gateway ID</Label>
+          <Input
+            id="gatewayId"
+            value={formData.gatewayId}
+            onChange={e => handleChange("gatewayId", e.target.value)}
+            placeholder="Ej. BASE-STATION-01"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="alertsCount">Conteo de Alertas</Label>
+          <Input
+            id="alertsCount"
+            type="number"
+            min={0}
+            value={formData.alertsCount}
+            onChange={e => handleChange("alertsCount", Number(e.target.value))}
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Carga Solar</Label>
+        <Select
+          value={String(formData.solarCharging)}
+          onValueChange={(val) => handleChange("solarCharging", val === "true")}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Seleccionar..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">Activa</SelectItem>
+            <SelectItem value="false">Inactiva</SelectItem>
           </SelectContent>
         </Select>
       </div>

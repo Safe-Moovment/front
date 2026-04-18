@@ -10,12 +10,13 @@ import { DeviceInfoPanel } from "./DeviceInfoPanel";
 import { useDashboard, Device } from "../../context/DashboardContext";
 
 export function DevicesView() {
-  const { devices, animals, addDevice, updateDevice } = useDashboard();
+  const { devices, animals, addDevice, updateDevice, devicesLoading, devicesError } = useDashboard();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingDevice, setEditingDevice] = useState<Device | null>(null);
 
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [infoDevice, setInfoDevice] = useState<Device | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeDevices = devices.filter(d => d.status === "active").length;
   const warningDevices = devices.filter(d => d.status === "warning").length;
@@ -88,6 +89,30 @@ export function DevicesView() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+        {devicesLoading && (
+          <Card className="md:col-span-2">
+            <CardContent className="py-8 text-sm text-muted-foreground">
+              Cargando dispositivos...
+            </CardContent>
+          </Card>
+        )}
+
+        {devicesError && (
+          <Card className="md:col-span-2 border-[#B94A3E]/30">
+            <CardContent className="py-6 text-sm text-[#B94A3E]">
+              {devicesError}
+            </CardContent>
+          </Card>
+        )}
+
+        {saveError && (
+          <Card className="md:col-span-2 border-[#B94A3E]/30">
+            <CardContent className="py-6 text-sm text-[#B94A3E]">
+              {saveError}
+            </CardContent>
+          </Card>
+        )}
+
         {devices.map((device) => (
           <Card
             key={device.id}
@@ -164,11 +189,22 @@ export function DevicesView() {
                 </div>
                 <div className="flex items-center gap-1">
                   <Activity className="h-3 w-3" />
-                  <span>{device.lastPing}</span>
+                  <span>{formatLastPing(device.lastPing)}</span>
                 </div>
               </div>
 
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setEditingDevice(device);
+                    setIsFormOpen(true);
+                  }}
+                >
+                  Editar
+                </Button>
                 <Button 
                   size="sm" 
                   variant="outline" 
@@ -190,9 +226,19 @@ export function DevicesView() {
         open={isFormOpen}
         onOpenChange={setIsFormOpen}
         device={editingDevice}
-        onSave={(data) => {
-          if (editingDevice) updateDevice(editingDevice.id, data);
-          else addDevice(data as Device);
+        onSave={async (data) => {
+          setSaveError(null);
+          try {
+            if (editingDevice) {
+              await updateDevice(editingDevice.id, data);
+            } else {
+              await addDevice(data as Device);
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "No se pudo guardar el dispositivo.";
+            setSaveError(message);
+            throw error;
+          }
         }}
       />
 
@@ -203,4 +249,29 @@ export function DevicesView() {
       />
     </div>
   );
+}
+
+function formatLastPing(raw: string): string {
+  const value = new Date(raw);
+  if (Number.isNaN(value.getTime())) {
+    return raw;
+  }
+
+  const diffMs = Date.now() - value.getTime();
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMin < 1) {
+    return "Hace un momento";
+  }
+  if (diffMin < 60) {
+    return `Hace ${diffMin} min`;
+  }
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) {
+    return `Hace ${diffHours} h`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `Hace ${diffDays} d`;
 }

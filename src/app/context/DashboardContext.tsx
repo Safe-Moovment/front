@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createDeviceApi, fetchDevicesApi, updateDeviceApi } from "../devicesApi";
 
 export interface Animal {
   id: string;
@@ -20,6 +21,12 @@ export interface Device {
   signal: number;
   status: "active" | "warning" | "critical";
   lastPing: string;
+  hardwareVersion: string;
+  solarCharging: boolean;
+  protocol: "LoRaWAN" | "LTE" | "NB-IoT";
+  lastSyncMode: "Store & Forward" | "Real-time";
+  gatewayId: string;
+  alertsCount: number;
 }
 
 export interface Alert {
@@ -57,8 +64,11 @@ interface DashboardContextType {
   resolveAlert: (id: number) => void;
   addAnimal: (animal: Animal) => void;
   updateAnimal: (id: string, animal: Partial<Animal>) => void;
-  addDevice: (device: Device) => void;
-  updateDevice: (id: string, device: Partial<Device>) => void;
+  addDevice: (device: Device) => Promise<void>;
+  updateDevice: (id: string, device: Partial<Device>) => Promise<void>;
+  refreshDevices: () => Promise<void>;
+  devicesLoading: boolean;
+  devicesError: string | null;
   addFence: (fence: Fence) => void;
   updateFence: (id: string, fence: Partial<Fence>) => void;
   deleteFence: (id: string) => void;
@@ -73,17 +83,6 @@ const initialAnimals: Animal[] = [
   { id: "023", name: "Bella", lat: 20.6580, lng: -103.3490, health: "Buena", battery: 91, temp: 38.7, lastUpdate: "Hace 6 min", status: "ok", locationText: "Sector B" },
   { id: "101", name: "Canela", lat: 20.6627, lng: -103.3506, health: "Alerta", battery: 85, temp: 39.2, lastUpdate: "Hace 5 min", status: "alert", locationText: "Fuera de perímetro" },
   { id: "087", name: "Nube", lat: 20.6575, lng: -103.3460, health: "Excelente", battery: 94, temp: 38.4, lastUpdate: "Hace 2 min", status: "ok", locationText: "Sector C" },
-];
-
-const initialDevices: Device[] = [
-  { id: "DEV-001", animalId: "001", battery: 95, signal: 98, status: "active", lastPing: "Hace 2 min" },
-  { id: "DEV-102", animalId: "102", battery: 87, signal: 85, status: "active", lastPing: "Hace 5 min" },
-  { id: "DEV-205", animalId: "205", battery: 92, signal: 92, status: "active", lastPing: "Hace 3 min" },
-  { id: "DEV-078", animalId: "078", battery: 78, signal: 88, status: "warning", lastPing: "Hace 1 min" },
-  { id: "DEV-156", animalId: "156", battery: 15, signal: 65, status: "critical", lastPing: "Hace 2 horas" },
-  { id: "DEV-023", animalId: "023", battery: 91, signal: 95, status: "active", lastPing: "Hace 6 min" },
-  { id: "DEV-101", animalId: "101", battery: 85, signal: 45, status: "warning", lastPing: "Hace 5 min" },
-  { id: "DEV-087", animalId: "087", battery: 94, signal: 98, status: "active", lastPing: "Hace 2 min" },
 ];
 
 const initialAlerts: Alert[] = [
@@ -140,7 +139,9 @@ const DashboardContext = createContext<DashboardContextType | undefined>(undefin
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [animals, setAnimals] = useState<Animal[]>(initialAnimals);
-  const [devices, setDevices] = useState<Device[]>(initialDevices);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState<boolean>(false);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   
   const [fences, setFences] = useState<Fence[]>(() => {
@@ -165,15 +166,39 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   };
 
   const addAnimal = (animal: Animal) => setAnimals(prev => [...prev, animal]);
+
+  const refreshDevices = async () => {
+    setDevicesLoading(true);
+    setDevicesError(null);
+    try {
+      const data = await fetchDevicesApi();
+      setDevices(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "No se pudieron cargar dispositivos.";
+      setDevicesError(message);
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshDevices();
+  }, []);
   
   const updateAnimal = (id: string, newData: Partial<Animal>) => {
     setAnimals(prev => prev.map(a => a.id === id ? { ...a, ...newData } : a));
   };
 
-  const addDevice = (device: Device) => setDevices(prev => [...prev, device]);
-  
-  const updateDevice = (id: string, newData: Partial<Device>) => {
-    setDevices(prev => prev.map(d => d.id === id ? { ...d, ...newData } : d));
+  const addDevice = async (device: Device) => {
+    setDevicesError(null);
+    const created = await createDeviceApi(device);
+    setDevices(prev => [...prev, created]);
+  };
+
+  const updateDevice = async (id: string, newData: Partial<Device>) => {
+    setDevicesError(null);
+    const updated = await updateDeviceApi(id, newData);
+    setDevices(prev => prev.map(d => d.id === id ? updated : d));
   };
 
   const addFence = (fence: Fence) => setFences(prev => [...prev, fence]);
@@ -197,6 +222,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     <DashboardContext.Provider value={{
       animals, devices, alerts, fences, ranchContext,
       resolveAlert, addAnimal, updateAnimal, addDevice, updateDevice,
+      refreshDevices, devicesLoading, devicesError,
       addFence, updateFence, deleteFence
     }}>
       {children}

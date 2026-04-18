@@ -80,7 +80,7 @@ export function DeviceInfoPanel({ open, onOpenChange, device }: Props) {
           <div className="border border-[#E5E5E5] rounded-xl p-4 bg-[#F0F0ED]/50 space-y-3">
             <h4 className="font-semibold text-sm flex items-center gap-2"><Cpu className="h-4 w-4"/> Información de Hardware</h4>
             <div className="grid grid-cols-2 gap-y-3 text-sm">
-              <div><span className="text-muted-foreground text-xs block">Modelo</span> MuuCollar Pro</div>
+              <div><span className="text-muted-foreground text-xs block">Modelo</span> {device.hardwareVersion}</div>
               <div><span className="text-muted-foreground text-xs block">Firmware</span> v2.3.1</div>
               <div><span className="text-muted-foreground text-xs block">Número de Serie</span> S/N-98421-{device.id}</div>
               <div><span className="text-muted-foreground text-xs block">Uptime</span> 23 días, 4 horas</div>
@@ -110,7 +110,7 @@ export function DeviceInfoPanel({ open, onOpenChange, device }: Props) {
               <div className="text-xs space-y-1.5 pt-2">
                 <div className="flex justify-between"><span className="text-muted-foreground">RSSI</span> <span>-65 dBm</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">SNR</span> <span className="text-[#5C7A5B]">8.5 dB</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Gateway</span> <span>GTW-JAL-02</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Gateway</span> <span>{device.gatewayId}</span></div>
               </div>
             </div>
           </div>
@@ -121,7 +121,7 @@ export function DeviceInfoPanel({ open, onOpenChange, device }: Props) {
           <div className="border border-[#E5E5E5] rounded-xl p-4 space-y-3">
             <h4 className="font-semibold text-sm flex items-center gap-2"><Radio className="h-4 w-4"/> Detalles Técnicos LoRaWAN</h4>
             <div className="grid grid-cols-2 gap-y-3 text-sm">
-              <div><span className="text-muted-foreground text-xs block">Frecuencia</span> 915 MHz (AU915)</div>
+              <div><span className="text-muted-foreground text-xs block">Protocolo</span> {device.protocol}</div>
               <div><span className="text-muted-foreground text-xs block">Data Rate</span> SF7BW125</div>
               <div><span className="text-muted-foreground text-xs block">Tasa de Éxito</span> 99.8%</div>
               <div><span className="text-muted-foreground text-xs block">Transmisiones Tot.</span> 12,458</div>
