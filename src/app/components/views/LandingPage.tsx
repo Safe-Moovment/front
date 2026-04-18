@@ -23,7 +23,7 @@ export function LandingPage() {
   const navigate = useNavigate();
 
   const handleCTA = () => {
-    navigate("/app");
+    navigate("/dashboard");
   };
 
   const handleDemoCTA = () => {
@@ -46,7 +46,7 @@ export function LandingPage() {
         <div className="container mx-auto px-4 md:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-              Safe Movement: Rentabilidad y Bienestar Animal a través de Cercas Digitales Inteligentes
+              Safe Moovement: Rentabilidad y Bienestar Animal a través de Cercas Digitales Inteligentes
             </h1>
             <p className="text-lg md:text-xl text-white/90 mb-8 leading-relaxed">
               Utilizamos <span className="font-semibold text-[#5C7A5B] bg-white/10 px-2 py-1 rounded">Precision Livestock Farming (PLF)</span> y sensores avanzados para monitorear la salud y ubicación de tu ganado en tiempo real, optimizando recursos y previniendo pérdidas.
@@ -62,7 +62,7 @@ export function LandingPage() {
               <Button 
                 onClick={handleCTA}
                 variant="outline" 
-                className="border-2 border-white text-white hover:bg-white/10 px-8 py-6 text-lg rounded-lg backdrop-blur-sm"
+                className="border-2 border-white !text-white hover:!text-white focus-visible:!text-white hover:bg-white/10 px-8 py-6 text-lg rounded-lg backdrop-blur-sm"
               >
                 Optimizar mi Hato
               </Button>
