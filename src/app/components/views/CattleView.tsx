@@ -10,12 +10,13 @@ import { useDashboard, Animal } from "../../context/DashboardContext";
 import { AnimalFormPanel } from "./AnimalFormPanel";
 
 export function CattleView() {
-  const { animals, addAnimal, updateAnimal } = useDashboard();
+  const { animals, addAnimal, updateAnimal, animalsLoading, animalsError } = useDashboard();
   const cattleData = animals;
   const [search, setSearch] = useState("");
   
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const filteredCattle = cattleData.filter(cattle =>
     cattle.id.includes(search) || cattle.name.toLowerCase().includes(search.toLowerCase())
@@ -51,7 +52,7 @@ export function CattleView() {
           </CardHeader>
           <CardContent>
             <div className="font-medium" style={{ fontSize: "2rem", lineHeight: 1 }}>
-              150
+              {cattleData.length}
             </div>
           </CardContent>
         </Card>
@@ -103,6 +104,24 @@ export function CattleView() {
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6 bg-[#F9FAF9] md:bg-white rounded-b-lg">
+          {animalsLoading && (
+            <div className="mb-4 rounded-md border border-[#E5E5E5] p-4 text-sm text-muted-foreground">
+              Cargando ganado...
+            </div>
+          )}
+
+          {animalsError && (
+            <div className="mb-4 rounded-md border border-[#B94A3E]/30 p-4 text-sm text-[#B94A3E]">
+              {animalsError}
+            </div>
+          )}
+
+          {saveError && (
+            <div className="mb-4 rounded-md border border-[#B94A3E]/30 p-4 text-sm text-[#B94A3E]">
+              {saveError}
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredCattle.map((cattle) => (
               <Card key={cattle.id} className="hover:shadow-md transition-shadow border border-[#E5E5E5]">
@@ -152,7 +171,7 @@ export function CattleView() {
                      <p className="text-xs text-muted-foreground mb-1">Último contacto</p>
                      <p className="font-medium text-[#2C2C2C] flex items-center gap-1.5">
                        <Activity className="h-3.5 w-3.5 text-[#5C7A5B]" />
-                       {cattle.lastUpdate}
+                       {formatLastUpdate(cattle.lastUpdate)}
                      </p>
                   </div>
                 </CardContent>
@@ -179,14 +198,46 @@ export function CattleView() {
         open={isPanelOpen}
         onOpenChange={setIsPanelOpen}
         animal={editingAnimal}
-        onSave={(data) => {
-          if (editingAnimal) {
-            updateAnimal(editingAnimal.id, data);
-          } else {
-            addAnimal(data as Animal);
+        onSave={async (data) => {
+          setSaveError(null);
+          try {
+            if (editingAnimal) {
+              await updateAnimal(editingAnimal.id, data);
+            } else {
+              await addAnimal(data as Animal);
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "No se pudo guardar el animal.";
+            setSaveError(message);
+            throw error;
           }
         }}
       />
     </div>
   );
+}
+
+function formatLastUpdate(raw: string): string {
+  const value = new Date(raw);
+  if (Number.isNaN(value.getTime())) {
+    return raw;
+  }
+
+  const diffMs = Date.now() - value.getTime();
+  const diffMin = Math.max(0, Math.floor(diffMs / 60000));
+
+  if (diffMin < 1) {
+    return "Hace un momento";
+  }
+  if (diffMin < 60) {
+    return `Hace ${diffMin} min`;
+  }
+
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) {
+    return `Hace ${diffHours} h`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `Hace ${diffDays} d`;
 }

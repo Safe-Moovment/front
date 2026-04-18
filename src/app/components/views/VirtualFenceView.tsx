@@ -7,24 +7,17 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { APIProvider, Map, useMap, AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
 import { useDashboard, Fence } from "../../context/DashboardContext";
 import { FenceFormPanel } from "./FenceFormPanel";
+import { useElevation } from "../../hooks/useElevation";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
 const MAPS_LIBRARIES = ["geometry"] as const;
 
-// Calculate fake elevation for styling/context
-const calculateSimulatedElevation = (lat: number, lng: number): number => {
-  const latVariation = (lat - 20.65) * 1000;
-  const lngVariation = (lng + 103.35) * 800;
-  const noise = Math.sin(lat * 100) * Math.cos(lng * 100) * 15;
-  const baseElevation = 1590;
-  return Math.round(Math.max(1550, Math.min(1650, baseElevation + latVariation + lngVariation + noise)));
-};
-
-function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence }: { 
+function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence, drawingMode }: { 
   fences: Fence[]; 
   selectedFenceId: string | null; 
   onSelect: (id: string) => void;
   onUpdateFence: (id: string, coords: [number, number][], area: string) => void;
+  drawingMode?: boolean;
 }) {
   const map = useMap();
   // Using a ref to hold instances avoids recreating polygons and breaking drag functionality
@@ -48,11 +41,12 @@ function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence }: {
       let polygon = polyMap.get(fence.id);
       const isActive = fence.status === "active";
       const isSelected = selectedFenceId === fence.id;
+      const isDrawing = drawingMode === true;
 
       if (!polygon) {
         polygon = new google.maps.Polygon({
           map,
-          clickable: true,
+          clickable: !isDrawing,
         });
 
         polygon.addListener("click", () => onSelect(fence.id));
@@ -89,7 +83,8 @@ function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence }: {
         strokeWeight: isSelected ? 4 : 2,
         fillColor: fence.color,
         fillOpacity: isActive ? 0.25 : 0.08,
-        editable: isSelected, // Makes vertices draggable!
+        clickable: !isDrawing,
+        editable: isSelected && !isDrawing,
       });
 
       // Avoid overriding paths if we are editing it, to prevent drag interruptions
@@ -102,7 +97,7 @@ function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence }: {
       }
     });
 
-  }, [map, fences, selectedFenceId, onSelect, onUpdateFence]);
+  }, [map, fences, selectedFenceId, onSelect, onUpdateFence, drawingMode]);
 
   return null;
 }
@@ -149,7 +144,16 @@ function PanController({ target }: { target: { lat: number, lng: number } | null
 }
 
 export function VirtualFenceView() {
-  const { fences, animals, ranchContext, addFence, updateFence, deleteFence } = useDashboard();
+  const {
+    fences,
+    animals,
+    ranchContext,
+    addFence,
+    updateFence,
+    deleteFence,
+    fencesLoading,
+    fencesError,
+  } = useDashboard();
   
   const [selectedFence, setSelectedFence] = useState<string | null>(null);
   const [mapTypeId, setMapTypeId] = useState<string>("terrain");
@@ -159,6 +163,9 @@ export function VirtualFenceView() {
 
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [draftCoords, setDraftCoords] = useState<[number, number][]>([]);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [elevationData, setElevationData] = useState<{ min: number; max: number; avg: number } | null>(null);
+  const { fetchHeadlessBatch } = useElevation();
 
   const defaultRanchCenter = { lat: ranchContext.lat, lng: ranchContext.lng };
   const [panTarget, setPanTarget] = useState<{ lat: number, lng: number } | null>(null);
@@ -173,16 +180,46 @@ export function VirtualFenceView() {
     }
   }, []);
 
-  const elevationData = useMemo(() => {
-    if (fences.length === 0) return null;
-    const elevations = fences.flatMap(f => f.coordinates.map(([lat, lng]) => calculateSimulatedElevation(lat, lng)));
-    if (elevations.length === 0) return null;
-    return {
-      min: Math.min(...elevations),
-      max: Math.max(...elevations),
-      avg: Math.round(elevations.reduce((a, b) => a + b, 0) / elevations.length),
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadElevationData() {
+      const locations = fences.flatMap((fence) =>
+        fence.coordinates.map(([lat, lng]) => ({ lat, lng })),
+      );
+
+      if (locations.length === 0) {
+        setElevationData(null);
+        return;
+      }
+
+      const results = await fetchHeadlessBatch(locations);
+      if (cancelled) return;
+
+      const elevations = results
+        .map((result) => result.elevation)
+        .filter((value): value is number => value !== null);
+
+      if (elevations.length === 0) {
+        setElevationData(null);
+        return;
+      }
+
+      setElevationData({
+        min: Math.min(...elevations),
+        max: Math.max(...elevations),
+        avg: Math.round(
+          elevations.reduce((acc, value) => acc + value, 0) / elevations.length,
+        ),
+      });
+    }
+
+    void loadElevationData();
+
+    return () => {
+      cancelled = true;
     };
-  }, [fences]);
+  }, [fences, fetchHeadlessBatch]);
 
   return (
     <div className="h-full flex flex-col lg:flex-row gap-4 md:gap-6 p-3 md:p-6">
@@ -225,12 +262,31 @@ export function VirtualFenceView() {
                     fences={fences} 
                     selectedFenceId={selectedFence} 
                     onSelect={setSelectedFence} 
-                    onUpdateFence={(id, coords, area) => updateFence(id, { coordinates: coords, area })}
+                    drawingMode={isDrawingMode}
+                    onUpdateFence={(id, coords, area) => {
+                      void updateFence(id, { coordinates: coords, area });
+                    }}
                   />
 
                   {isDrawingMode && draftCoords.length > 0 && (
                     <DraftOverlay coordinates={draftCoords} />
                   )}
+
+                  {isDrawingMode && draftCoords.map(([lat, lng], index) => (
+                    <AdvancedMarker key={`draft-node-${index}-${lat}-${lng}`} position={{ lat, lng }}>
+                      <div
+                        style={{
+                          width: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                          backgroundColor: '#2A9D8F',
+                          border: '2px solid #FFFFFF',
+                          boxShadow: '0 0 0 2px rgba(42,157,143,0.35)',
+                        }}
+                        title={`Nodo ${index + 1}`}
+                      />
+                    </AdvancedMarker>
+                  ))}
 
                   {/* Render Animals overlapping fences */}
                   {animals.map((animal) => (
@@ -380,7 +436,7 @@ export function VirtualFenceView() {
                     <Switch 
                       checked={fence.status === "active"} 
                       onCheckedChange={(checked) => {
-                        updateFence(fence.id, { status: checked ? "active" : "inactive" });
+                        void updateFence(fence.id, { status: checked ? "active" : "inactive" });
                       }}
                       onClick={e => e.stopPropagation()}
                     />
@@ -440,9 +496,15 @@ export function VirtualFenceView() {
                       size="sm"
                       variant="outline"
                       className="text-[#B94A3E] hover:bg-[#B94A3E]/10"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        deleteFence(fence.id);
+                        setSaveError(null);
+                        try {
+                          await deleteFence(fence.id);
+                        } catch (error) {
+                          const message = error instanceof Error ? error.message : "No se pudo eliminar la valla.";
+                          setSaveError(message);
+                        }
                         if (selectedFence === fence.id) setSelectedFence(null);
                       }}
                     >
@@ -454,6 +516,16 @@ export function VirtualFenceView() {
             ))}
           </CardContent>
         </Card>
+
+        {(fencesLoading || fencesError || saveError) && (
+          <Card>
+            <CardContent className="pt-5 pb-5 text-sm">
+              {fencesLoading && <p className="text-muted-foreground">Cargando vallas...</p>}
+              {fencesError && <p className="text-[#B94A3E]">{fencesError}</p>}
+              {saveError && <p className="text-[#B94A3E]">{saveError}</p>}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardHeader className="pb-3">
@@ -481,11 +553,19 @@ export function VirtualFenceView() {
         onOpenChange={setIsFormOpen}
         fence={editingFence}
         draftCoordinates={draftCoords.length > 0 ? draftCoords : undefined}
-        onSave={(data) => {
-          if (editingFence) updateFence(editingFence.id, data);
-          else {
-            addFence(data as Fence);
-            setDraftCoords([]); // clear draft after saving
+        onSave={async (data) => {
+          setSaveError(null);
+          try {
+            if (editingFence) {
+              await updateFence(editingFence.id, data);
+            } else {
+              await addFence(data as Fence);
+              setDraftCoords([]); // clear draft after saving
+            }
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "No se pudo guardar la valla.";
+            setSaveError(message);
+            throw error;
           }
         }}
       />

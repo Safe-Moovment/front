@@ -13,7 +13,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   fence: Fence | null;
   draftCoordinates?: [number, number][];
-  onSave: (data: Partial<Fence>) => void;
+  onSave: (data: Partial<Fence>) => Promise<void> | void;
 }
 
 export function FenceFormPanel({ open, onOpenChange, fence, draftCoordinates, onSave }: Props) {
@@ -44,7 +44,7 @@ export function FenceFormPanel({ open, onOpenChange, fence, draftCoordinates, on
       }
 
       setFormData({
-        id: `FENCE-${Math.floor(100 + Math.random() * 900)}`,
+        id: `FENCE-${Date.now()}`,
         name: "",
         area: computedAreaStr,
         animals: 0,
@@ -60,8 +60,8 @@ export function FenceFormPanel({ open, onOpenChange, fence, draftCoordinates, on
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
+  const handleSave = async () => {
+    await onSave(formData);
     onOpenChange(false);
   };
 

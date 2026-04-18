@@ -241,8 +241,74 @@ function RiskZones({
   return null;
 }
 
+function VirtualFencesOverlay({
+  fences,
+}: {
+  fences: Array<{
+    id: string;
+    status: "active" | "inactive";
+    color: string;
+    coordinates: [number, number][];
+  }>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map || fences.length === 0) return;
+
+    const polygons: google.maps.Polygon[] = [];
+
+    fences.forEach((fence) => {
+      if (fence.coordinates.length < 3) return;
+
+      const polygon = new google.maps.Polygon({
+        map,
+        paths: fence.coordinates.map(([lat, lng]) => ({ lat, lng })),
+        strokeColor: fence.color,
+        strokeOpacity: fence.status === "active" ? 0.95 : 0.5,
+        strokeWeight: fence.status === "active" ? 2.5 : 1.5,
+        fillColor: fence.color,
+        fillOpacity: fence.status === "active" ? 0.12 : 0.05,
+        clickable: false,
+      });
+
+      polygons.push(polygon);
+    });
+
+    return () => {
+      polygons.forEach((polygon) => polygon.setMap(null));
+    };
+  }, [map, fences]);
+
+  return null;
+}
+
+function isPointInsidePolygon(
+  point: { lat: number; lng: number },
+  polygon: [number, number][],
+): boolean {
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+
+    const intersects =
+      yi > point.lng !== yj > point.lng &&
+      point.lat < ((xj - xi) * (point.lng - yi)) / (yj - yi + Number.EPSILON) + xi;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
 export function ElevationMapView() {
-  const { animals, ranchContext } = useDashboard();
+  const { animals, fences, fencesLoading, fencesError, ranchContext } = useDashboard();
   const RANCH_CENTER = { lat: ranchContext.lat, lng: ranchContext.lng };
 
   const GRID_ROWS = 10;
@@ -310,10 +376,10 @@ export function ElevationMapView() {
   }, [elevationGrid]);
 
   // Count risk zones (slopes > 30°)
-  const riskZoneCount = useMemo(() => {
-    if (elevationGrid.length === 0) return 0;
+  const riskyPointIndices = useMemo(() => {
+    if (elevationGrid.length === 0) return new Set<number>();
     const cols = GRID_COLS + 1;
-    let count = 0;
+    const riskyPoints = new Set<number>();
 
     for (let i = 0; i < elevationGrid.length; i++) {
       const point = elevationGrid[i];
@@ -334,11 +400,71 @@ export function ElevationMapView() {
           point.lat, point.lng, neighbor.lat, neighbor.lng
         );
         const slope = calculateSlope(point.elevation, neighbor.elevation, dist);
-        if (slope > 30) count++;
+        if (slope > 30) {
+          riskyPoints.add(i);
+          riskyPoints.add(ni);
+        }
       }
     }
-    return count;
+    return riskyPoints;
   }, [elevationGrid]);
+
+  const riskZoneCount = riskyPointIndices.size;
+
+  const fenceRiskSummary = useMemo(() => {
+    if (fences.length === 0 || elevationGrid.length === 0) {
+      return [] as Array<{
+        id: string;
+        name: string;
+        status: "active" | "inactive";
+        color: string;
+        riskyPoints: number;
+        sampledPoints: number;
+        hasPendingRisk: boolean;
+      }>;
+    }
+
+    return fences.map((fence) => {
+      if (fence.coordinates.length < 3) {
+        return {
+          id: fence.id,
+          name: fence.name,
+          status: fence.status,
+          color: fence.color,
+          riskyPoints: 0,
+          sampledPoints: 0,
+          hasPendingRisk: false,
+        };
+      }
+
+      let sampledPoints = 0;
+      let riskyPoints = 0;
+
+      elevationGrid.forEach((point, index) => {
+        if (point.elevation === null) return;
+        if (!isPointInsidePolygon({ lat: point.lat, lng: point.lng }, fence.coordinates)) {
+          return;
+        }
+
+        sampledPoints += 1;
+        if (riskyPointIndices.has(index)) {
+          riskyPoints += 1;
+        }
+      });
+
+      return {
+        id: fence.id,
+        name: fence.name,
+        status: fence.status,
+        color: fence.color,
+        riskyPoints,
+        sampledPoints,
+        hasPendingRisk: fence.status === "active" && riskyPoints > 0,
+      };
+    }).sort((a, b) => Number(b.hasPendingRisk) - Number(a.hasPendingRisk));
+  }, [fences, elevationGrid, riskyPointIndices]);
+
+  const pendingFencesCount = fenceRiskSummary.filter((item) => item.hasPendingRisk).length;
 
   // Handle map click to show elevation at a point
   const handleMapClick = useCallback(
@@ -396,6 +522,8 @@ export function ElevationMapView() {
                   onClick={handleMapClick}
                   style={{ width: "100%", height: "100%" }}
                 >
+                  {fences.length > 0 && <VirtualFencesOverlay fences={fences} />}
+
                   {/* Elevation overlay rectangles */}
                   {showOverlay && elevationGrid.length > 0 && (
                     <ElevationOverlay
@@ -648,6 +776,13 @@ export function ElevationMapView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {(fencesLoading || fencesError) && (
+              <div className="rounded-lg border border-[#E5E5E5] bg-white p-3 text-sm">
+                {fencesLoading && <p className="text-[#6B6B6B]">Cargando vallas virtuales...</p>}
+                {fencesError && <p className="text-[#B94A3E]">{fencesError}</p>}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-[#6B6B6B]">
                 Pendientes {">"} 30°
@@ -681,6 +816,47 @@ export function ElevationMapView() {
                 caídas y accidentes para el ganado. Se recomienda configurar
                 vallas virtuales para prevenir el acceso.
               </p>
+            </div>
+
+            <div className="pt-2 border-t border-[#E5E5E5]">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm text-[#6B6B6B]">Vallas con pendiente de riesgo</span>
+                <Badge
+                  variant={pendingFencesCount > 0 ? "destructive" : "secondary"}
+                  className={pendingFencesCount === 0 ? "bg-[#5C7A5B] text-white" : ""}
+                >
+                  {pendingFencesCount}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                {fenceRiskSummary.length === 0 && (
+                  <p className="text-xs text-[#9CA3AF]">Sin vallas virtuales configuradas.</p>
+                )}
+
+                {fenceRiskSummary.map((item) => (
+                  <div key={item.id} className="rounded-md border border-[#E5E5E5] p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="text-xs font-medium text-[#2C2C2C] truncate">{item.name}</span>
+                      </div>
+                      <Badge
+                        variant={item.hasPendingRisk ? "destructive" : "secondary"}
+                        className={!item.hasPendingRisk ? "bg-[#F0F0ED] text-[#2C2C2C]" : ""}
+                      >
+                        {item.hasPendingRisk ? "Pendiente" : "Estable"}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-[#6B6B6B] mt-1">
+                      Riesgo: {item.riskyPoints} / {item.sampledPoints || 0} puntos
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>

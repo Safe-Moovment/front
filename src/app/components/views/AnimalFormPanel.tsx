@@ -12,7 +12,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   animal: Animal | null;
-  onSave: (data: Partial<Animal>) => void;
+  onSave: (data: Partial<Animal>) => Promise<void> | void;
 }
 
 export function AnimalFormPanel({ open, onOpenChange, animal, onSave }: Props) {
@@ -32,7 +32,7 @@ export function AnimalFormPanel({ open, onOpenChange, animal, onSave }: Props) {
         locationText: "Sector A",
         temp: 38.5,
         battery: 100,
-        lastUpdate: "Ahora",
+        lastUpdate: new Date().toISOString(),
         lat: 20.6597,
         lng: -103.3496
       });
@@ -43,8 +43,8 @@ export function AnimalFormPanel({ open, onOpenChange, animal, onSave }: Props) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    onSave(formData);
+  const handleSave = async () => {
+    await onSave(formData);
     onOpenChange(false);
   };
 
@@ -58,6 +58,7 @@ export function AnimalFormPanel({ open, onOpenChange, animal, onSave }: Props) {
           id="id" 
           value={formData.id} 
           onChange={e => handleChange("id", e.target.value)} 
+          disabled={isEditing}
           placeholder="Ej. 104"
         />
       </div>
