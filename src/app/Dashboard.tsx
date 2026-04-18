@@ -15,6 +15,7 @@ import { VirtualFenceView } from "./components/views/VirtualFenceView";
 import { GeminiView } from "./components/views/GeminiView";
 import { ElevationMapView } from "./components/views/ElevationMapView";
 import { clearDashboardAuthenticated } from "./auth";
+import { BrandLogo } from "./components/BrandLogo";
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -75,13 +76,16 @@ export default function Dashboard() {
                     >
                         <Menu className="h-5 w-5" />
                     </Button>
-                    <h1 className="font-semibold text-[#2C2C2C]">Safe Moovment</h1>
+                    <BrandLogo tone="dark" imageClassName="h-8 w-8" />
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
                         Salir
                     </Button>
                 </div>
 
                 <div className="hidden lg:flex justify-end p-3 bg-white border-b border-[#E5E5E5]">
+                    <div className="mr-auto">
+                        <BrandLogo tone="dark" imageClassName="h-8 w-8" />
+                    </div>
                     <Button variant="outline" size="sm" onClick={handleLogout}>
                         Cerrar sesion
                     </Button>

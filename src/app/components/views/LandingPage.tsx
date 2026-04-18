@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { ImageWithFallback } from "../ui/ImageWithFallback";
 import { useNavigate } from "react-router";
+import { BrandLogo } from "../BrandLogo";
 
 export function LandingPage() {
   const navigate = useNavigate();
@@ -41,6 +42,10 @@ export function LandingPage() {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#2C2C2C]/90 via-[#2C2C2C]/70 to-[#2C2C2C]/50" />
+        </div>
+
+        <div className="absolute top-6 left-4 md:left-6 lg:left-8 z-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 text-white shadow-lg">
+          <BrandLogo tone="light" imageClassName="h-9 w-9" textClassName="text-white" />
         </div>
         
         <div className="container mx-auto px-4 md:px-6 lg:px-8 relative z-10">

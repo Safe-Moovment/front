@@ -13,6 +13,7 @@ import { DevicesView } from "./components/views/DevicesView";
 import { VirtualFenceView } from "./components/views/VirtualFenceView";
 import { GeminiView } from "./components/views/GeminiView";
 import { ElevationMapView } from "./components/views/ElevationMapView";
+import { BrandLogo } from "./components/BrandLogo";
 
 export default function AppDashboard() {
   const [currentView, setCurrentView] = useState("home");
@@ -67,7 +68,7 @@ export default function AppDashboard() {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="font-semibold text-[#2C2C2C]">Safe Moovment</h1>
+                  <BrandLogo tone="dark" imageClassName="h-8 w-8" />
           <div className="w-10" /> {/* Espaciador */}
         </div>
 

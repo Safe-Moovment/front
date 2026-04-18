@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
+import { BrandLogo } from "./BrandLogo";
 
 const menuItems = [
   { icon: Home, label: "Inicio", path: "home" },
@@ -55,10 +56,7 @@ export function Sidebar({ currentView, onNavigate, mobileOpen, onMobileClose }: 
       >
         <div className="p-4 flex items-center justify-between border-b border-[#3D3D3D]">
           {!collapsed && (
-            <div>
-              <h2 className="font-semibold tracking-tight">Safe Moovment</h2>
-              <p className="text-xs text-[#9CA3AF] mt-0.5">Sistema de Monitoreo</p>
-            </div>
+            <BrandLogo tone="light" imageClassName="h-9 w-9" textClassName="text-white" />
           )}
           <Button
             variant="ghost"
