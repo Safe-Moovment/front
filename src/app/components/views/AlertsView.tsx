@@ -3,61 +3,20 @@ import { AlertTriangle, MapPin, Thermometer, Battery, Clock } from "lucide-react
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../ui/dialog";
+import { Switch } from "../ui/switch";
+import { useDashboard } from "../../context/DashboardContext";
 
-const allAlerts = [
-  {
-    id: 1,
-    animal: "Vaca 101",
-    type: "location",
-    message: "Fuera de perímetro",
-    severity: "high",
-    time: "Hace 5 min",
-    location: "Sector Norte, 2.3km del límite"
-  },
-  {
-    id: 2,
-    animal: "Vaca 078",
-    type: "temperature",
-    message: "Temperatura elevada: 39.8°C",
-    severity: "medium",
-    time: "Hace 23 min",
-    location: "Sector A"
-  },
-  {
-    id: 3,
-    animal: "Vaca 205",
-    type: "location",
-    message: "Cerca del límite virtual",
-    severity: "low",
-    time: "Hace 1 hora",
-    location: "Sector C"
-  },
-  {
-    id: 4,
-    animal: "Vaca 156",
-    type: "battery",
-    message: "Batería baja: 15%",
-    severity: "medium",
-    time: "Hace 2 horas",
-    location: "Sector D"
-  },
-  {
-    id: 5,
-    animal: "Vaca 023",
-    type: "temperature",
-    message: "Temperatura elevada: 40.1°C",
-    severity: "high",
-    time: "Hace 3 horas",
-    location: "Sector B"
-  }
-];
-
-export function AlertsView() {
+export function AlertsView({ onNavigate }: { onNavigate?: (path: string) => void }) {
+  const { alerts: allAlerts, animals, resolveAlert } = useDashboard();
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [selectedMapAnimal, setSelectedMapAnimal] = useState<any>(null);
   const highAlerts = allAlerts.filter(a => a.severity === "high");
   const mediumAlerts = allAlerts.filter(a => a.severity === "medium");
   const lowAlerts = allAlerts.filter(a => a.severity === "low");
 
-  const renderAlert = (alert: typeof allAlerts[0]) => (
+  const renderAlert = (alert: any) => (
     <Card key={alert.id} className="hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-start gap-4">
@@ -95,10 +54,13 @@ export function AlertsView() {
             </div>
 
             <div className="flex gap-2 mt-3">
-              <Button size="sm" className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90">
+              <Button size="sm" className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90" onClick={() => {
+                const animal = animals.find(a => alert.animal.includes(a.id));
+                if (animal) setSelectedMapAnimal(animal);
+              }}>
                 Ver Ubicación
               </Button>
-              <Button size="sm" variant="outline">
+              <Button size="sm" variant="outline" onClick={() => resolveAlert(alert.id)}>
                 Resolver
               </Button>
             </div>
@@ -120,7 +82,7 @@ export function AlertsView() {
             Monitoreo en tiempo real de eventos críticos
           </p>
         </div>
-        <Button className="bg-[#3D5A3C] hover:bg-[#3D5A3C]/90 w-full sm:w-auto">
+        <Button className="bg-[#3D5A3C] hover:bg-[#3D5A3C]/90 w-full sm:w-auto" onClick={() => setIsConfigOpen(true)}>
           Configurar Alertas
         </Button>
       </div>
@@ -179,6 +141,81 @@ export function AlertsView() {
           {lowAlerts.map(renderAlert)}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Configuración de Alertas</DialogTitle>
+            <DialogDescription>
+              Ajusta las notificaciones y sensibilidades del sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Notificaciones Push</p>
+                <p className="text-xs text-muted-foreground">Recibe alertas en la app en tiempo real</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Alertas por Correo</p>
+                <p className="text-xs text-muted-foreground">Recibe resumen diario y alertas críticas</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Alertas de Temperatura</p>
+                <p className="text-xs text-muted-foreground">Señal de fiebre o hipotermia (&gt;39.5°C o &lt;37°C)</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-sm">Perímetro Estricto</p>
+                <p className="text-xs text-muted-foreground">Avisar incluso antes de cruzar la valla (5m de holgura)</p>
+              </div>
+              <Switch />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90" onClick={() => setIsConfigOpen(false)}>
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!selectedMapAnimal} onOpenChange={(open) => !open && setSelectedMapAnimal(null)}>
+        <DialogContent className="sm:max-w-[700px] h-[80vh] max-h-[600px] p-0 overflow-hidden flex flex-col">
+          <div className="p-4 pb-2 border-b">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-[#5C7A5B]" />
+                Ubicación de {selectedMapAnimal?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Última posición GPS reportada: {selectedMapAnimal?.lat.toFixed(5)}, {selectedMapAnimal?.lng.toFixed(5)} ({selectedMapAnimal?.locationText})
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 w-full bg-[#E5E5E5]">
+            {selectedMapAnimal && (
+              <iframe
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                allowFullScreen
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${selectedMapAnimal.lat},${selectedMapAnimal.lng}&zoom=17&maptype=satellite`}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

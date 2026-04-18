@@ -7,19 +7,16 @@ import { Button } from "../ui/button";
 import { useState } from "react";
 import { Progress } from "../ui/progress";
 
-const cattleData = [
-  { id: "001", name: "Luna", location: "Sector A", health: "Excelente", battery: 95, temp: 38.5, lastUpdate: "Hace 2 min" },
-  { id: "102", name: "Estrella", location: "Sector B", health: "Buena", battery: 87, temp: 38.8, lastUpdate: "Hace 5 min" },
-  { id: "205", name: "Margarita", location: "Sector C", health: "Excelente", battery: 92, temp: 38.3, lastUpdate: "Hace 3 min" },
-  { id: "078", name: "Rosa", location: "Sector A", health: "Atención", battery: 78, temp: 39.8, lastUpdate: "Hace 1 min" },
-  { id: "156", name: "Paloma", location: "Sector D", health: "Excelente", battery: 89, temp: 38.6, lastUpdate: "Hace 4 min" },
-  { id: "023", name: "Bella", location: "Sector B", health: "Buena", battery: 91, temp: 38.7, lastUpdate: "Hace 6 min" },
-  { id: "101", name: "Canela", location: "Fuera", health: "Alerta", battery: 85, temp: 39.2, lastUpdate: "Hace 5 min" },
-  { id: "087", name: "Nube", location: "Sector C", health: "Excelente", battery: 94, temp: 38.4, lastUpdate: "Hace 2 min" },
-];
+import { useDashboard, Animal } from "../../context/DashboardContext";
+import { AnimalFormPanel } from "./AnimalFormPanel";
 
 export function CattleView() {
+  const { animals, addAnimal, updateAnimal } = useDashboard();
+  const cattleData = animals;
   const [search, setSearch] = useState("");
+  
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
 
   const filteredCattle = cattleData.filter(cattle =>
     cattle.id.includes(search) || cattle.name.toLowerCase().includes(search.toLowerCase())
@@ -37,7 +34,13 @@ export function CattleView() {
             {cattleData.length} animales monitoreados
           </p>
         </div>
-        <Button className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90 w-full sm:w-auto">
+        <Button 
+          className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90 w-full sm:w-auto"
+          onClick={() => {
+            setEditingAnimal(null);
+            setIsPanelOpen(true);
+          }}
+        >
           Agregar Animal
         </Button>
       </div>
@@ -59,7 +62,7 @@ export function CattleView() {
           </CardHeader>
           <CardContent>
             <div className="font-medium text-[#5C7A5B]" style={{ fontSize: "2rem", lineHeight: 1 }}>
-              147
+              {cattleData.filter(c => c.health === "Excelente" || c.health === "Buena").length}
             </div>
           </CardContent>
         </Card>
@@ -69,7 +72,7 @@ export function CattleView() {
           </CardHeader>
           <CardContent>
             <div className="font-medium text-[#B94A3E]" style={{ fontSize: "2rem", lineHeight: 1 }}>
-              3
+              {cattleData.filter(c => c.health === "Atención" || c.health === "Alerta").length}
             </div>
           </CardContent>
         </Card>
@@ -101,7 +104,7 @@ export function CattleView() {
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
@@ -122,7 +125,7 @@ export function CattleView() {
                   <TableCell>
                     <div className="flex items-center gap-1">
                       <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-sm">{cattle.location}</span>
+                      <span className="text-sm">{cattle.locationText}</span>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -155,7 +158,15 @@ export function CattleView() {
                     {cattle.lastUpdate}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button size="sm" variant="ghost" className="text-[#3D5A3C]">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-[#3D5A3C]"
+                      onClick={() => {
+                        setEditingAnimal(cattle);
+                        setIsPanelOpen(true);
+                      }}
+                    >
                       Ver Detalles
                     </Button>
                   </TableCell>
@@ -165,6 +176,19 @@ export function CattleView() {
           </Table>
         </CardContent>
       </Card>
+
+      <AnimalFormPanel
+        open={isPanelOpen}
+        onOpenChange={setIsPanelOpen}
+        animal={editingAnimal}
+        onSave={(data) => {
+          if (editingAnimal) {
+            updateAnimal(editingAnimal.id, data);
+          } else {
+            addAnimal(data as Animal);
+          }
+        }}
+      />
     </div>
   );
 }

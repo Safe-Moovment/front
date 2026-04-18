@@ -2,34 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { AlertTriangle, MapPin, Thermometer } from "lucide-react";
 import { Badge } from "./ui/badge";
 
-const alerts = [
-  {
-    id: 1,
-    animal: "Vaca 101",
-    type: "location",
-    message: "Fuera de perímetro",
-    severity: "high",
-    time: "Hace 5 min"
-  },
-  {
-    id: 2,
-    animal: "Vaca 078",
-    type: "temperature",
-    message: "Temperatura elevada: 39.8°C",
-    severity: "medium",
-    time: "Hace 23 min"
-  },
-  {
-    id: 3,
-    animal: "Vaca 205",
-    type: "location",
-    message: "Cerca del límite virtual",
-    severity: "low",
-    time: "Hace 1 hora"
-  }
-];
+import { useDashboard } from "../context/DashboardContext";
 
 export function AlertsPanel() {
+  const { alerts } = useDashboard();
+  const recentAlerts = alerts.slice(0, 3);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -40,7 +17,7 @@ export function AlertsPanel() {
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
-          {alerts.map((alert) => (
+          {recentAlerts.map((alert) => (
             <div
               key={alert.id}
               className="flex items-start gap-2 md:gap-3 p-2 md:p-3 rounded bg-[#FAFAF8] border border-[#E5E5E5] hover:border-[#D1D5DB] transition-colors"

@@ -5,7 +5,8 @@ import {
   Radio,
   MapPin,
   Sparkles,
-  Menu
+  Menu,
+  Mountain
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { useState } from "react";
@@ -16,6 +17,7 @@ const menuItems = [
   { icon: Beef, label: "Ganado", path: "cattle" },
   { icon: Radio, label: "Dispositivos", path: "devices" },
   { icon: MapPin, label: "Valla Virtual", path: "fence" },
+  { icon: Mountain, label: "Elevación", path: "elevation" },
   { icon: Sparkles, label: "Gemini Concierge", path: "gemini" },
 ];
 

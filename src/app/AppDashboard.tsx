@@ -12,6 +12,7 @@ import { CattleView } from "./components/views/CattleView";
 import { DevicesView } from "./components/views/DevicesView";
 import { VirtualFenceView } from "./components/views/VirtualFenceView";
 import { GeminiView } from "./components/views/GeminiView";
+import { ElevationMapView } from "./components/views/ElevationMapView";
 
 export default function AppDashboard() {
   const [currentView, setCurrentView] = useState("home");
@@ -20,7 +21,7 @@ export default function AppDashboard() {
   const renderView = () => {
     switch (currentView) {
       case "alerts":
-        return <AlertsView />;
+        return <AlertsView onNavigate={setCurrentView} />;
       case "cattle":
         return <CattleView />;
       case "devices":
@@ -29,6 +30,8 @@ export default function AppDashboard() {
         return <VirtualFenceView />;
       case "gemini":
         return <GeminiView />;
+      case "elevation":
+        return <ElevationMapView />;
       default:
         return (
           <div className="h-full p-3 md:p-6 flex flex-col lg:flex-row gap-4 md:gap-6">

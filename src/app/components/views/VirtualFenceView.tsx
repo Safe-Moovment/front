@@ -1,235 +1,253 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { MapPin, Plus, Edit2, Trash2, Power, Mountain } from "lucide-react";
+import { Plus, Edit2, Trash2, Power, Mountain, MapPin } from "lucide-react";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { Switch } from "../ui/switch";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { APIProvider, Map, useMap, AdvancedMarker, Pin } from "@vis.gl/react-google-maps";
+import { useDashboard, Fence } from "../../context/DashboardContext";
+import { FenceFormPanel } from "./FenceFormPanel";
 
-const fences = [
-  {
-    id: "FENCE-001",
-    name: "Perímetro Principal",
-    area: "245 hectáreas",
-    animals: 145,
-    status: "active",
-    violations: 1,
-    color: "#5C7A5B",
-    coordinates: [
-      [20.6570, -103.3510],
-      [20.6640, -103.3510],
-      [20.6640, -103.3450],
-      [20.6570, -103.3450],
-    ] as [number, number][],
-  },
-  {
-    id: "FENCE-002",
-    name: "Sector A - Pastoreo",
-    area: "80 hectáreas",
-    animals: 45,
-    status: "active",
-    violations: 0,
-    color: "#3D5A3C",
-    coordinates: [
-      [20.6575, -103.3505],
-      [20.6600, -103.3505],
-      [20.6600, -103.3480],
-      [20.6575, -103.3480],
-    ] as [number, number][],
-  },
-  {
-    id: "FENCE-003",
-    name: "Sector B - Descanso",
-    area: "60 hectáreas",
-    animals: 30,
-    status: "inactive",
-    violations: 0,
-    color: "#9B8563",
-    coordinates: [
-      [20.6605, -103.3505],
-      [20.6630, -103.3505],
-      [20.6630, -103.3480],
-      [20.6605, -103.3480],
-    ] as [number, number][],
-  },
-  {
-    id: "FENCE-004",
-    name: "Zona de Cuarentena",
-    area: "15 hectáreas",
-    animals: 3,
-    status: "active",
-    violations: 0,
-    color: "#B94A3E",
-    coordinates: [
-      [20.6575, -103.3475],
-      [20.6590, -103.3475],
-      [20.6590, -103.3460],
-      [20.6575, -103.3460],
-    ] as [number, number][],
-  },
-];
+const GOOGLE_MAPS_API_KEY = "AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8";
+const MAPS_LIBRARIES = ["geometry"] as const;
 
-const animalMarkers = [
-  { id: "001", lat: 20.6597, lng: -103.3496, status: "ok" },
-  { id: "102", lat: 20.6587, lng: -103.3486, status: "ok" },
-  { id: "205", lat: 20.6607, lng: -103.3476, status: "ok" },
-  { id: "101", lat: 20.6647, lng: -103.3516, status: "alert" },
-  { id: "078", lat: 20.6577, lng: -103.3466, status: "ok" },
-];
-
-// Función para simular elevación basada en coordenadas (zona de Jalisco: 1550-1650m)
+// Calculate fake elevation for styling/context
 const calculateSimulatedElevation = (lat: number, lng: number): number => {
   const latVariation = (lat - 20.65) * 1000;
   const lngVariation = (lng + 103.35) * 800;
   const noise = Math.sin(lat * 100) * Math.cos(lng * 100) * 15;
-
   const baseElevation = 1590;
-  const elevation = baseElevation + latVariation + lngVariation + noise;
-
-  return Math.round(Math.max(1550, Math.min(1650, elevation)));
+  return Math.round(Math.max(1550, Math.min(1650, baseElevation + latVariation + lngVariation + noise)));
 };
 
-export function VirtualFenceView() {
-  const [selectedFence, setSelectedFence] = useState<string | null>(null);
-  const [mapType, setMapType] = useState<"terrain" | "satellite">("terrain");
-  const [elevationData, setElevationData] = useState<{ min: number; max: number; avg: number } | null>(null);
+function FencesOverlay({ fences, selectedFenceId, onSelect, onUpdateFence }: { 
+  fences: Fence[]; 
+  selectedFenceId: string | null; 
+  onSelect: (id: string) => void;
+  onUpdateFence: (id: string, coords: [number, number][], area: string) => void;
+}) {
+  const map = useMap();
+  // Using a ref to hold instances avoids recreating polygons and breaking drag functionality
+  const polyMapRef = useRef<Map<string, google.maps.Polygon>>(new window.Map());
 
-  const center = { lat: 20.6597, lng: -103.3496 };
-  const zoom = 14;
-
-  // Calcular datos de elevación para el área usando simulación
   useEffect(() => {
-    const elevations = fences[0].coordinates.map(([lat, lng]) =>
-      calculateSimulatedElevation(lat, lng)
-    );
+    if (!map) return;
 
-    setElevationData({
+    const currentIds = new Set(fences.map(f => f.id));
+    const polyMap = polyMapRef.current;
+
+    // Remove deleted fences
+    for (const [id, poly] of polyMap.entries()) {
+      if (!currentIds.has(id)) {
+        poly.setMap(null);
+        polyMap.delete(id);
+      }
+    }
+
+    fences.forEach((fence) => {
+      let polygon = polyMap.get(fence.id);
+      const isActive = fence.status === "active";
+      const isSelected = selectedFenceId === fence.id;
+
+      if (!polygon) {
+        polygon = new google.maps.Polygon({
+          map,
+          clickable: true,
+        });
+
+        polygon.addListener("click", () => onSelect(fence.id));
+
+        // Initialize paths
+        polygon.setPaths(fence.coordinates.map(([lat, lng]) => ({ lat, lng })));
+        
+        // Listeners for geometry calculation
+        const path = polygon.getPath();
+        const handler = () => {
+          const newCoords: [number, number][] = [];
+          for (let i = 0; i < path.getLength(); i++) {
+            newCoords.push([path.getAt(i).lat(), path.getAt(i).lng()]);
+          }
+          let areaStr = fence.area;
+          if (google.maps.geometry?.spherical) {
+            const sqMeters = google.maps.geometry.spherical.computeArea(path);
+            areaStr = `${(sqMeters / 10000).toFixed(2)} hectáreas`;
+          }
+          onUpdateFence(fence.id, newCoords, areaStr);
+        };
+        
+        path.addListener("set_at", handler);
+        path.addListener("insert_at", handler);
+        path.addListener("remove_at", handler);
+        
+        polyMap.set(fence.id, polygon);
+      }
+
+      // Sync appearance
+      polygon.setOptions({
+        strokeColor: fence.color,
+        strokeOpacity: isActive ? 0.9 : 0.5,
+        strokeWeight: isSelected ? 4 : 2,
+        fillColor: fence.color,
+        fillOpacity: isActive ? 0.25 : 0.08,
+        editable: isSelected, // Makes vertices draggable!
+      });
+
+      // Avoid overriding paths if we are editing it, to prevent drag interruptions
+      if (!isSelected) {
+        // Simple syncing check
+        const path = polygon.getPath();
+        if (path && path.getLength() !== fence.coordinates.length) {
+          polygon.setPaths(fence.coordinates.map(([lat, lng]) => ({ lat, lng })));
+        }
+      }
+    });
+
+  }, [map, fences, selectedFenceId, onSelect, onUpdateFence]);
+
+  return null;
+}
+
+function DraftOverlay({ coordinates }: { coordinates: [number, number][] }) {
+  const map = useMap();
+  const polyRef = useRef<google.maps.Polygon | null>(null);
+
+  useEffect(() => {
+    if (!map) return;
+    if (!polyRef.current) {
+      polyRef.current = new google.maps.Polygon({
+        map,
+        strokeColor: "#2A9D8F",
+        strokeOpacity: 0.9,
+        strokeWeight: 3,
+        fillColor: "#2A9D8F",
+        fillOpacity: 0.3,
+        clickable: false,
+      });
+    }
+
+    polyRef.current.setPaths(coordinates.map(([lat, lng]) => ({ lat, lng })));
+  }, [map, coordinates]);
+
+  useEffect(() => {
+    return () => {
+      if (polyRef.current) polyRef.current.setMap(null);
+    };
+  }, []);
+
+  return null;
+}
+
+export function VirtualFenceView() {
+  const { fences, animals, ranchContext, addFence, updateFence, deleteFence } = useDashboard();
+  
+  const [selectedFence, setSelectedFence] = useState<string | null>(null);
+  const [mapTypeId, setMapTypeId] = useState<string>("terrain");
+  
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingFence, setEditingFence] = useState<Fence | null>(null);
+
+  const [isDrawingMode, setIsDrawingMode] = useState(false);
+  const [draftCoords, setDraftCoords] = useState<[number, number][]>([]);
+
+  const center = { lat: ranchContext.lat, lng: ranchContext.lng };
+
+  const elevationData = useMemo(() => {
+    if (fences.length === 0) return null;
+    const elevations = fences.flatMap(f => f.coordinates.map(([lat, lng]) => calculateSimulatedElevation(lat, lng)));
+    if (elevations.length === 0) return null;
+    return {
       min: Math.min(...elevations),
       max: Math.max(...elevations),
       avg: Math.round(elevations.reduce((a, b) => a + b, 0) / elevations.length),
-    });
-  }, []);
-
-  // Convertir coordenadas a formato SVG
-  const latLngToSVG = (lat: number, lng: number) => {
-    const latRange = 0.007;
-    const lngRange = 0.006;
-    const x = ((lng - (center.lng - lngRange / 2)) / lngRange) * 100;
-    const y = ((center.lat + latRange / 2 - lat) / latRange) * 100;
-    return { x, y };
-  };
+    };
+  }, [fences]);
 
   return (
     <div className="h-full flex flex-col lg:flex-row gap-4 md:gap-6 p-3 md:p-6">
-      <div className="flex-1 min-w-0 h-[400px] md:h-[500px] lg:h-auto">
-        <Card className="h-full">
-          <CardHeader>
+      <div className="flex-1 min-w-0 h-[450px] md:h-[550px] lg:h-auto">
+        <Card className="h-full flex flex-col">
+          <CardHeader className="pb-3 shrink-0">
             <CardTitle className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-[#5C7A5B]" />
               Mapa de Vallas Virtuales
             </CardTitle>
           </CardHeader>
-          <CardContent className="h-[calc(100%-80px)]">
-            <div className="relative w-full h-full rounded overflow-hidden border border-[#4A5A4D]">
-              {/* Google Maps Iframe con terreno */}
-              <iframe
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-                src={`https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${center.lat},${center.lng}&zoom=${zoom}&maptype=${mapType}`}
-              />
-
-              {/* Overlay SVG para vallas */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-              >
-                <defs>
-                  <filter id="glow-fence-map">
-                    <feGaussianBlur stdDeviation="0.3" result="coloredBlur" />
-                    <feMerge>
-                      <feMergeNode in="coloredBlur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                </defs>
-
-                {fences.map((fence) => {
-                  const points = fence.coordinates
-                    .map(([lat, lng]) => {
-                      const { x, y } = latLngToSVG(lat, lng);
-                      return `${x},${y}`;
-                    })
-                    .join(" ");
-
-                  return (
-                    <polygon
-                      key={fence.id}
-                      points={points}
-                      fill={fence.color}
-                      fillOpacity={fence.status === "active" ? 0.2 : 0.08}
-                      stroke={fence.color}
-                      strokeWidth={selectedFence === fence.id ? 0.6 : 0.4}
-                      strokeDasharray={fence.status === "active" ? "2,1.5" : "1,2"}
-                      opacity={fence.status === "active" ? 0.95 : 0.5}
-                      filter="url(#glow-fence-map)"
-                      className="pointer-events-auto cursor-pointer transition-all"
-                      onClick={() => setSelectedFence(fence.id)}
-                    />
-                  );
-                })}
-
-                {animalMarkers.map((animal) => {
-                  const { x, y } = latLngToSVG(animal.lat, animal.lng);
-                  return (
-                    <circle
-                      key={animal.id}
-                      cx={x}
-                      cy={y}
-                      r="0.8"
-                      fill={animal.status === "alert" ? "#B94A3E" : "#5C7A5B"}
-                      stroke="#ffffff"
-                      strokeWidth="0.2"
-                      opacity="0.95"
-                      filter="url(#glow-fence-map)"
-                    />
-                  );
-                })}
-              </svg>
-
-              {/* Controles */}
-              <div className="absolute top-2 md:top-4 right-2 md:right-4 flex flex-col gap-1.5 md:gap-2 z-10">
-                <button
-                  onClick={() => setMapType("terrain")}
-                  className={`px-2 md:px-3 py-1 md:py-1.5 text-xs rounded shadow-md border transition-colors ${
-                    mapType === "terrain"
-                      ? "bg-[#5C7A5B] text-white border-[#5C7A5B]"
-                      : "bg-white text-[#2C2C2C] border-[#E5E5E5] hover:border-[#5C7A5B]"
-                  }`}
+          <CardContent className="flex-1 min-h-[400px] pb-4">
+            <div className="relative w-full h-full min-h-[400px] rounded border border-[#4A5A4D] overflow-hidden">
+              
+              <APIProvider apiKey={GOOGLE_MAPS_API_KEY} libraries={MAPS_LIBRARIES}>
+                <Map
+                  defaultCenter={center}
+                  defaultZoom={15}
+                  mapId="virtual-fence-map"
+                  mapTypeId={mapTypeId}
+                  gestureHandling="greedy"
+                  disableDefaultUI={false}
+                  zoomControl={true}
+                  mapTypeControl={false}
+                  streetViewControl={false}
+                  fullscreenControl={true}
+                  style={{ width: "100%", height: "100%", cursor: isDrawingMode ? "crosshair" : "default" }}
+                  onClick={(e) => {
+                    if (isDrawingMode) {
+                      if (e.detail?.latLng) {
+                        setDraftCoords(prev => [...prev, [e.detail.latLng.lat, e.detail.latLng.lng]]);
+                      }
+                    } else {
+                      setSelectedFence(null);
+                    }
+                  }}
                 >
-                  Terreno
-                </button>
-                <button
-                  onClick={() => setMapType("satellite")}
-                  className={`px-2 md:px-3 py-1 md:py-1.5 text-xs rounded shadow-md border transition-colors ${
-                    mapType === "satellite"
-                      ? "bg-[#5C7A5B] text-white border-[#5C7A5B]"
-                      : "bg-white text-[#2C2C2C] border-[#E5E5E5] hover:border-[#5C7A5B]"
-                  }`}
-                >
-                  Satélite
-                </button>
+                  {/* Render native google map polygons */}
+                  <FencesOverlay 
+                    fences={fences} 
+                    selectedFenceId={selectedFence} 
+                    onSelect={setSelectedFence} 
+                    onUpdateFence={(id, coords, area) => updateFence(id, { coordinates: coords, area })}
+                  />
+
+                  {isDrawingMode && draftCoords.length > 0 && (
+                    <DraftOverlay coordinates={draftCoords} />
+                  )}
+
+                  {/* Render Animals overlapping fences */}
+                  {animals.map((animal) => (
+                    <AdvancedMarker key={animal.id} position={{ lat: animal.lat, lng: animal.lng }}>
+                      <Pin
+                        background={animal.status === "alert" ? "#B94A3E" : "#5C7A5B"}
+                        borderColor="#fff"
+                        glyphColor="#fff"
+                        scale={0.8}
+                      />
+                    </AdvancedMarker>
+                  ))}
+                </Map>
+              </APIProvider>
+
+              {/* Map Controls */}
+              <div className="absolute top-3 right-3 flex flex-col gap-1.5 z-10">
+                {(["terrain", "satellite"] as const).map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => setMapTypeId(type)}
+                    className={`px-3 py-1.5 text-xs rounded shadow-md border transition-colors capitalize ${
+                      mapTypeId === type
+                        ? "bg-[#5C7A5B] text-white border-[#5C7A5B]"
+                        : "bg-white text-[#2C2C2C] border-[#E5E5E5] hover:border-[#5C7A5B]"
+                    }`}
+                  >
+                    {type === "terrain" ? "Terreno" : "Satélite"}
+                  </button>
+                ))}
               </div>
 
-              <div className="absolute top-2 md:top-4 left-2 md:left-4 bg-white/95 px-2 md:px-3 py-1.5 md:py-2 rounded shadow-md border border-[#E5E5E5] text-xs max-w-[180px] md:max-w-none">
+              {/* Mini active fences overlay info */}
+              <div className="absolute top-3 left-3 bg-white/95 px-3 py-2 rounded shadow-md border border-[#E5E5E5] text-xs max-w-[180px]">
                 <p className="font-medium mb-2 text-[#2C2C2C]">Vallas Activas</p>
-                {fences.map((fence) => (
+                {fences.filter(f => f.status === "active").map((fence) => (
                   <div key={fence.id} className="flex items-center gap-2 mb-1">
                     <div className="w-2 h-2 rounded" style={{ backgroundColor: fence.color }} />
-                    <span className="text-xs text-[#6B6B6B]">{fence.name}</span>
+                    <span className="text-xs text-[#6B6B6B] truncate">{fence.name}</span>
                   </div>
                 ))}
                 {elevationData && (
@@ -245,24 +263,58 @@ export function VirtualFenceView() {
                 )}
               </div>
 
-              <div className="absolute bottom-2 md:bottom-4 right-2 md:right-4 flex flex-col sm:flex-row gap-1.5 md:gap-2 z-10">
-                <Button size="sm" className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90 text-xs">
-                  <Plus className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
-                  <span className="hidden md:inline">Nueva Valla</span>
-                </Button>
-                <Button size="sm" className="bg-[#3D5A3C] hover:bg-[#3D5A3C]/90 text-xs">
-                  <Edit2 className="h-3 w-3 md:h-4 md:w-4 md:mr-1" />
-                  <span className="hidden md:inline">Editar</span>
-                </Button>
+              {/* Action Buttons Overlay */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-10 mx-auto w-max">
+                {isDrawingMode ? (
+                  <>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      className="bg-white/90 shadow-lg text-black hover:bg-white"
+                      onClick={() => {
+                        setIsDrawingMode(false);
+                        setDraftCoords([]);
+                      }}
+                    >
+                      Cancelar Trazo
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      className="bg-[#2A9D8F] hover:bg-[#2A9D8F]/90 shadow-lg text-white font-medium"
+                      disabled={draftCoords.length < 3}
+                      onClick={() => {
+                        setIsDrawingMode(false);
+                        setEditingFence(null); // It's a new fence!
+                        setIsFormOpen(true);
+                      }}
+                    >
+                      Terminar y Guardar
+                    </Button>
+                  </>
+                ) : (
+                  <Button 
+                    size="sm" 
+                    className="bg-[#5C7A5B] hover:bg-[#5C7A5B]/90 shadow-lg"
+                    onClick={() => {
+                      setEditingFence(null);
+                      setIsDrawingMode(true);
+                      setDraftCoords([]);
+                      setSelectedFence(null);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Nueva Valla
+                  </Button>
+                )}
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="lg:w-96 space-y-4 md:space-y-6 overflow-y-auto">
+      <div className="lg:w-96 space-y-4 md:space-y-6 overflow-y-auto pb-4">
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2">
               <Power className="h-5 w-5 text-[#3D5A3C]" />
               Vallas Configuradas
@@ -287,7 +339,13 @@ export function VirtualFenceView() {
                       <h3 className="font-medium mb-1">{fence.name}</h3>
                       <p className="text-xs text-muted-foreground">{fence.id}</p>
                     </div>
-                    <Switch checked={fence.status === "active"} />
+                    <Switch 
+                      checked={fence.status === "active"} 
+                      onCheckedChange={(checked) => {
+                        updateFence(fence.id, { status: checked ? "active" : "inactive" });
+                      }}
+                      onClick={e => e.stopPropagation()}
+                    />
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -321,14 +379,22 @@ export function VirtualFenceView() {
                     <div className="flex items-center gap-1 text-xs text-[#B94A3E] bg-[#B94A3E]/10 p-2 rounded border border-[#B94A3E]/20">
                       <MapPin className="h-3 w-3" />
                       <span>
-                        {fence.violations} violación{fence.violations > 1 ? "es" : ""}{" "}
-                        detectada{fence.violations > 1 ? "s" : ""}
+                        {fence.violations} violación{fence.violations > 1 ? "es" : ""} detectada{fence.violations > 1 ? "s" : ""}
                       </span>
                     </div>
                   )}
 
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">
+                  <div className="flex gap-2 pt-1 border-t mt-3">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingFence(fence);
+                        setIsFormOpen(true);
+                      }}
+                    >
                       <Edit2 className="h-3 w-3 mr-1" />
                       Editar
                     </Button>
@@ -336,6 +402,11 @@ export function VirtualFenceView() {
                       size="sm"
                       variant="outline"
                       className="text-[#B94A3E] hover:bg-[#B94A3E]/10"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteFence(fence.id);
+                        if (selectedFence === fence.id) setSelectedFence(null);
+                      }}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -347,49 +418,39 @@ export function VirtualFenceView() {
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm">Estadísticas Generales</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-[#6B6B6B]">Vallas activas</span>
-              <span className="font-medium text-[#5C7A5B]">3/4</span>
+              <span className="font-medium text-[#5C7A5B]">{fences.filter(f => f.status === "active").length}/{fences.length}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[#6B6B6B]">Área total monitoreada</span>
-              <span className="font-medium text-[#2C2C2C]">400 ha</span>
+              <span className="font-medium text-[#2C2C2C]">{ranchContext.totalArea}</span>
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-[#6B6B6B]">Violaciones hoy</span>
-              <span className="font-medium text-[#B94A3E]">1</span>
+              <span className="font-medium text-[#B94A3E]">{fences.reduce((acc, f) => acc + f.violations, 0)}</span>
             </div>
-            {elevationData && (
-              <>
-                <div className="pt-2 border-t border-[#E5E5E5]">
-                  <p className="text-xs text-[#6B6B6B] mb-2 flex items-center gap-1">
-                    <Mountain className="h-3 w-3" />
-                    Datos de Elevación
-                  </p>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#6B6B6B]">Elevación mínima</span>
-                    <span className="font-medium text-[#2C2C2C]">{elevationData.min}m</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-[#6B6B6B]">Elevación máxima</span>
-                    <span className="font-medium text-[#2C2C2C]">{elevationData.max}m</span>
-                  </div>
-                  <div className="flex justify-between text-sm mt-1">
-                    <span className="text-[#6B6B6B]">Desnivel</span>
-                    <span className="font-medium text-[#5C7A5B]">
-                      {elevationData.max - elevationData.min}m
-                    </span>
-                  </div>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
       </div>
+
+      <FenceFormPanel
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        fence={editingFence}
+        draftCoordinates={draftCoords.length > 0 ? draftCoords : undefined}
+        onSave={(data) => {
+          if (editingFence) updateFence(editingFence.id, data);
+          else {
+            addFence(data as Fence);
+            setDraftCoords([]); // clear draft after saving
+          }
+        }}
+      />
     </div>
   );
 }

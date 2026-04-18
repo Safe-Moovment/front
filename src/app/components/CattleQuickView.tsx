@@ -3,15 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Beef, Battery, MapPin } from "lucide-react";
 import { Badge } from "./ui/badge";
 
-const cattleData = [
-  { id: "001", location: "Sector A", health: "Excelente", battery: 95 },
-  { id: "102", location: "Sector B", health: "Buena", battery: 87 },
-  { id: "205", location: "Sector C", health: "Excelente", battery: 92 },
-  { id: "078", location: "Sector A", health: "Atención", battery: 78 },
-  { id: "156", location: "Sector D", health: "Excelente", battery: 89 },
-];
+import { useDashboard } from "../context/DashboardContext";
 
 export function CattleQuickView() {
+  const { animals } = useDashboard();
+  // Mostrar solo los primeros 5 para la vista rápida
+  const cattleData = animals.slice(0, 5);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -37,7 +34,7 @@ export function CattleQuickView() {
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <MapPin className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-sm">{cattle.location}</span>
+                    <span className="text-sm">{cattle.locationText}</span>
                   </div>
                 </TableCell>
                 <TableCell>

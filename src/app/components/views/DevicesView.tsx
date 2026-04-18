@@ -3,19 +3,20 @@ import { Radio, Battery, Signal, MapPin, Activity } from "lucide-react";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
+import { useState } from "react";
+import { DeviceFormPanel } from "./DeviceFormPanel";
+import { DeviceInfoPanel } from "./DeviceInfoPanel";
 
-const devices = [
-  { id: "DEV-001", animalId: "001", battery: 95, signal: 98, status: "active", lastPing: "Hace 2 min", location: "Sector A" },
-  { id: "DEV-102", animalId: "102", battery: 87, signal: 85, status: "active", lastPing: "Hace 5 min", location: "Sector B" },
-  { id: "DEV-205", animalId: "205", battery: 92, signal: 92, status: "active", lastPing: "Hace 3 min", location: "Sector C" },
-  { id: "DEV-078", animalId: "078", battery: 78, signal: 88, status: "warning", lastPing: "Hace 1 min", location: "Sector A" },
-  { id: "DEV-156", animalId: "156", battery: 15, signal: 65, status: "critical", lastPing: "Hace 2 horas", location: "Sector D" },
-  { id: "DEV-023", animalId: "023", battery: 91, signal: 95, status: "active", lastPing: "Hace 6 min", location: "Sector B" },
-  { id: "DEV-101", animalId: "101", battery: 85, signal: 45, status: "warning", lastPing: "Hace 5 min", location: "Fuera" },
-  { id: "DEV-087", animalId: "087", battery: 94, signal: 98, status: "active", lastPing: "Hace 2 min", location: "Sector C" },
-];
+import { useDashboard, Device } from "../../context/DashboardContext";
 
 export function DevicesView() {
+  const { devices, animals, addDevice, updateDevice } = useDashboard();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<Device | null>(null);
+
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [infoDevice, setInfoDevice] = useState<Device | null>(null);
+
   const activeDevices = devices.filter(d => d.status === "active").length;
   const warningDevices = devices.filter(d => d.status === "warning").length;
   const criticalDevices = devices.filter(d => d.status === "critical").length;
@@ -32,7 +33,13 @@ export function DevicesView() {
             Gestión de collares inteligentes y sensores
           </p>
         </div>
-        <Button className="bg-[#3D5A3C] hover:bg-[#3D5A3C]/90 w-full sm:w-auto">
+        <Button 
+          className="bg-[#3D5A3C] hover:bg-[#3D5A3C]/90 w-full sm:w-auto"
+          onClick={() => {
+            setEditingDevice(null);
+            setIsFormOpen(true);
+          }}
+        >
           Registrar Dispositivo
         </Button>
       </div>
@@ -153,7 +160,7 @@ export function DevicesView() {
               <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t">
                 <div className="flex items-center gap-1">
                   <MapPin className="h-3 w-3" />
-                  <span>{device.location}</span>
+                  <span>{animals.find(a => a.id === device.animalId)?.locationText || "Desconocida"}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Activity className="h-3 w-3" />
@@ -162,17 +169,38 @@ export function DevicesView() {
               </div>
 
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1">
-                  Diagnóstico
-                </Button>
-                <Button size="sm" className="flex-1 bg-[#3D5A3C] hover:bg-[#3D5A3C]/90">
-                  Configurar
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    setInfoDevice(device);
+                    setIsInfoOpen(true);
+                  }}
+                >
+                  Información del Dispositivo
                 </Button>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <DeviceFormPanel
+        open={isFormOpen}
+        onOpenChange={setIsFormOpen}
+        device={editingDevice}
+        onSave={(data) => {
+          if (editingDevice) updateDevice(editingDevice.id, data);
+          else addDevice(data as Device);
+        }}
+      />
+
+      <DeviceInfoPanel 
+        open={isInfoOpen}
+        onOpenChange={setIsInfoOpen}
+        device={infoDevice}
+      />
     </div>
   );
 }
