@@ -16,7 +16,7 @@ import {
   ArrowRight,
   CheckCircle2
 } from "lucide-react";
-import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { ImageWithFallback } from "../ui/ImageWithFallback";
 import { useNavigate } from "react-router";
 
 export function LandingPage() {
