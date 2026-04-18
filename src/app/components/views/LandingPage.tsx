@@ -1,11 +1,11 @@
 import { Button } from "../ui/button";
 import { Card, CardContent } from "../ui/card";
-import { 
-  MapPin, 
-  Shield, 
-  Wifi, 
-  TrendingUp, 
-  Droplet, 
+import {
+  MapPin,
+  Shield,
+  Wifi,
+  TrendingUp,
+  Droplet,
   Heart,
   FileText,
   Leaf,
@@ -36,7 +36,7 @@ export function LandingPage() {
       {/* Hero Section */}
       <section className="relative min-h-[600px] md:min-h-[700px] lg:min-h-[800px] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <ImageWithFallback 
+          <ImageWithFallback
             src="https://images.unsplash.com/photo-1624350272806-7af5919b2465?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtZXhpY2FuJTIwY2F0dGxlJTIwZ3JhemluZyUyMGxhbmRzY2FwZXxlbnwxfHx8fDE3NzY0ODE5NDV8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
             alt="Ganado en pastizales mexicanos"
             className="w-full h-full object-cover"
@@ -47,7 +47,7 @@ export function LandingPage() {
         <div className="absolute top-6 left-4 md:left-6 lg:left-8 z-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 text-white shadow-lg">
           <BrandLogo tone="light" imageClassName="h-9 w-9" textClassName="text-white" />
         </div>
-        
+
         <div className="container mx-auto px-4 md:px-6 lg:px-8 relative z-10">
           <div className="max-w-3xl">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
@@ -57,19 +57,12 @@ export function LandingPage() {
               Utilizamos <span className="font-semibold text-[#5C7A5B] bg-white/10 px-2 py-1 rounded">Precision Livestock Farming (PLF)</span> y sensores avanzados para monitorear la salud y ubicación de tu ganado en tiempo real, optimizando recursos y previniendo pérdidas.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button 
+              <Button
                 onClick={handleDemoCTA}
                 className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
               >
                 Demo
                 <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button 
-                onClick={handleCTA}
-                variant="outline" 
-                className="border-2 border-white !text-white hover:!text-white focus-visible:!text-white hover:bg-white/10 px-8 py-6 text-lg rounded-lg backdrop-blur-sm"
-              >
-                Optimizar mi Hato
               </Button>
             </div>
           </div>
@@ -93,7 +86,7 @@ export function LandingPage() {
             <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl group">
               <CardContent className="p-6">
                 <div className="relative h-48 mb-6 rounded-lg overflow-hidden">
-                  <ImageWithFallback 
+                  <ImageWithFallback
                     src="https://images.unsplash.com/photo-1774646598595-fa600737ecec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0b3BvZ3JhcGhpYyUyMG1hcCUyMHRlcnJhaW4lMjBlbGV2YXRpb258ZW58MXx8fHwxNzc2NDgxOTQ1fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
                     alt="Mapas topográficos"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -123,7 +116,7 @@ export function LandingPage() {
             <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl group">
               <CardContent className="p-6">
                 <div className="relative h-48 mb-6 rounded-lg overflow-hidden">
-                  <ImageWithFallback 
+                  <ImageWithFallback
                     src="https://images.unsplash.com/photo-1762381650890-43b1030fc842?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxsaXZlc3RvY2slMjB0ZWNobm9sb2d5JTIwc2Vuc29yc3xlbnwxfHx8fDE3NzY0ODE5NDZ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
                     alt="Cercado virtual"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -153,7 +146,7 @@ export function LandingPage() {
             <Card className="border-2 border-[#E5E5E5] hover:border-[#5C7A5B] transition-all hover:shadow-xl group">
               <CardContent className="p-6">
                 <div className="relative h-48 mb-6 rounded-lg overflow-hidden">
-                  <ImageWithFallback 
+                  <ImageWithFallback
                     src="https://images.unsplash.com/photo-1677480357171-bd1916641fe3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxpb3QlMjBjb2xsYXIlMjBkZXZpY2V8ZW58MXx8fHwxNzc2NDgxOTQ2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
                     alt="Edge computing"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -315,7 +308,7 @@ export function LandingPage() {
 
             <div className="relative">
               <div className="relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
-                <ImageWithFallback 
+                <ImageWithFallback
                   src="https://images.unsplash.com/photo-1738669470463-78d1e0d6654b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzdXN0YWluYWJsZSUyMGNhdHRsZSUyMGZhcm1pbmd8ZW58MXx8fHwxNzc2NDgxOTQ2fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
                   alt="Ganadería sostenible"
                   className="w-full h-full object-cover"
@@ -336,7 +329,7 @@ export function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="relative order-2 lg:order-1">
               <div className="relative h-[400px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl">
-                <ImageWithFallback 
+                <ImageWithFallback
                   src="https://images.unsplash.com/photo-1758411898158-213a318e2442?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxkaWdpdGFsJTIwbW9uaXRvcmluZyUyMGRhc2hib2FyZHxlbnwxfHx8fDE3NzY0ODE5NDd8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
                   alt="Dashboard de monitoreo"
                   className="w-full h-full object-cover"
@@ -487,19 +480,12 @@ export function LandingPage() {
             Únete a los ganaderos mexicanos que ya están optimizando su rentabilidad y mejorando el bienestar de su ganado con tecnología de precisión.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={handleCTA}
-              className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-10 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
+            <Button
+              onClick={handleDemoCTA}
+              className="bg-[#5C7A5B] hover:bg-[#4A6249] text-white px-8 py-6 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all"
             >
-              Solicitar Demo Gratuita
+              Demo
               <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button 
-              onClick={handleCTA}
-              variant="outline" 
-              className="border-2 border-white text-white hover:bg-white/10 px-10 py-6 text-lg rounded-lg backdrop-blur-sm"
-            >
-              Ver Dashboard en Vivo
             </Button>
           </div>
         </div>
